@@ -1,0 +1,45 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
+..\FrameXML\UI.xsd">
+	<Button name="ShaanaAuraButtonTemplate" inherits="SecureActionButtonTemplate" virtual="true">
+		<Size x="64" y="64"/>
+		<Scripts>
+			<OnLeave>
+				self.active_tooltip = false
+				GameTooltip:Hide()
+			</OnLeave>
+		</Scripts>
+	</Button>
+	<Button name="ShaanaBuffButtonTemplate" inherits="ShaanaAuraButtonTemplate" virtual="true">
+    	<Attributes>
+			<Attribute name="type" value="cancelaura"/>
+		</Attributes>
+		<Scripts>
+			<OnEnter>
+				self.active_tooltip = true
+				self:update_aura_tooltip()
+			</OnEnter>
+			<OnLoad>
+				self:RegisterForClicks("RightButtonDown")
+			</OnLoad>
+		</Scripts>
+	</Button>
+	<Button name="ShaanaDebuffButtonTemplate" inherits="ShaanaAuraButtonTemplate" virtual="true">
+		<Scripts>
+			<OnEnter>
+				self.active_tooltip = true
+				self:update_aura_tooltip()
+			</OnEnter>
+		</Scripts>
+	</Button>
+	<Button name="ShaanaTempEnchantButtonTemplate" inherits="ShaanaAuraButtonTemplate" virtual="true">
+		<Attributes>
+			<Attribute name="type" value="cancelaura"/>
+		</Attributes>
+		<Scripts>
+			<OnEnter>
+				self.active_tooltip = true
+				self:update_temp_enchant_tooltip()
+			</OnEnter>
+		</Scripts>
+	</Button>
+</Ui>

@@ -1,0 +1,12 @@
+## Interface: 50100
+## Title: sBuff2
+## Author: Shaana
+## Version: 2.0 beta1
+## Notes: Shaana's player aura frames
+
+
+AuraButtonTemplate.xml
+config.lua
+core.lua
+sBuff2.lua
+
