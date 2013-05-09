@@ -130,6 +130,14 @@ function header.new(self, name, config, attribute, helpful)
 	object:Show()
 
 	object:RegisterEvent("PLAYER_ENTERING_WORLD")
+	--[[
+	--basically need for temp enchants
+	if self.helpful then
+		object:RegisterEvent("INVENTORY_CHANGED")
+	end
+	
+	--]]
+	
 	object:HookScript("OnEvent", self.update)
 
 	return object
@@ -141,7 +149,8 @@ function header.update(self, event, unit)
 	--print("update_header")
 	--TODO make it more understandable
 	if unit ~= "player" and unit ~= "vehicle" and event ~= "PLAYER_ENTERING_WORLD" then return end
-
+	--WHY does this getting displayed twice ?
+	print(event)
 	local max_aura = self:GetAttribute("wrapAfter") * self:GetAttribute("maxWraps")
 
 	--TODO change where we same the buttons i+2 sucks, especially for debuff header
@@ -270,15 +279,16 @@ end
 
 --update the button, only here UnitAura is called
 --TODO might rename to update_aura ?, so we can create update_temp_enchant as well ?
-local temp_aura = {}
+--local temp_aura = {}
 
 function button.update_aura(self)
-	--[[_update_aura_table(temp_aura, UnitAura("player", self:GetID(), self.header:GetAttribute("filter")))
+	local temp_aura = {}
+	_update_aura_table(temp_aura, UnitAura("player", self:GetID(), self.header:GetAttribute("filter")))
 	
-	if not temp_aura["name"] then
-		print(temp_aura["name"])
-	end
-		--]]
+	--if not temp_aura["name"] then
+	print(temp_aura["name"],self.aura["name"])
+	--end
+	
 	_update_aura_table(self.aura, UnitAura("player", self:GetID(), self.header:GetAttribute("filter")))
 	
 	--TODO UnitAura sometimes returns nil when chaning zones
