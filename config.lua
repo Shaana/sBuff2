@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2008-2012 Shaana <shaana@student.ethz.ch>
+Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
 This file is part of sBuff.
 
 sBuff is free software: you can redistribute it and/or modify
@@ -71,6 +71,7 @@ for k,_ in pairs(config) do
 end
 
 ---Attributes section (advanced)
+--do NOT touch this if you're not certain what you're doing!
 local x, y = config["default"]["horizontal_spacing"] + config["default"]["width"], config["default"]["vertical_spacing"] + config["default"]["height"]
 
 --xOffset, yOffset, wrapXOffset, wrapYOffset
@@ -85,7 +86,7 @@ local directions = {
 	["DOWNRIGHT"]	= {0, -y, x, 0},										
 } 
 
-local grow_direction = directions[config["default"]["grow_direction"]]
+local grow_direction = directions[config["default"]["grow_direction"]] -- or directions["LEFTDOWN"]
 
 -- for further information on attributes check http://wowprogramming.com/utils/xmlbrowser/live/FrameXML/SecureGroupHeaders.lua
 attribute["default"] = {

@@ -1,5 +1,5 @@
 --[[
-Copyright (c) 2008-2012 Shaana <shaana@student.ethz.ch>
+Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
 This file is part of sBuff.
 
 sBuff is free software: you can redistribute it and/or modify
