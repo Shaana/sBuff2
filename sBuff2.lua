@@ -34,8 +34,8 @@ local function init()
 	--core.check_config_integrity()
 	--core.check_attribute_integrity()
 
-	header_buff = class.header:new("sBuff_HeaderBuffs", config["buff"], attribute["buff"], true)
-	header_debuff = class.header:new("sBuff_HeaderDebuffs", config["debuff"], attribute["debuff"], false)
+	header_buff = class.header:new("sBuff_HeaderBuffs", config["buff"], attribute["buff"])
+	header_debuff = class.header:new("sBuff_HeaderDebuffs", config["debuff"], attribute["debuff"])
 
 	--header_buff:SetScale(0.55)
 	--header_debuff:SetScale(0.55)

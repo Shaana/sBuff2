@@ -21,7 +21,6 @@ local addon, namespace = ...
 local config = {}
 namespace.config = config
 
---protype
 local attribute = {}
 namespace.attribute = attribute
 
@@ -52,6 +51,7 @@ config["default"] = {
 
 config["buff"] = {
 	["__index"] = config["default"],
+	["helpful"] = true, --simple true/false to check if its the buff or debuff header
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -15}, --{"CENTER", UIParent, "CENTER", 0, 0},
 	["border_color"] = {0.4, 0.4, 0.4, 1},
 	["update_frequency"] = 1,
@@ -60,6 +60,7 @@ config["buff"] = {
 
 config["debuff"] = {
 	["__index"] = config["default"],
+	["helpful"] = false, --simple true/false to check if its the buff or debuff header
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -266}, --{"CENTER", UIParent, "CENTER", 0, -200},
 	["border_color"] = {0.8, 0, 0, 1},
 	["update_frequency"] = 0.5,

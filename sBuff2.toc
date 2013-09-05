@@ -3,6 +3,7 @@
 ## Author: Shaana
 ## Version: 2.0 beta1
 ## Notes: Shaana's player aura frames
+## OptionalDeps: sCore
 
 
 AuraButtonTemplate.xml

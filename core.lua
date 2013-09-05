@@ -30,6 +30,9 @@ class.header = header
 local button = {}
 class.button = button
 
+local pp = {}
+class.pp = pp --pixelperfection
+
 --Note: 'button' is always refering to an object created by the class.button:new(...) method, 
 --while 'button_frame' is refering to object returned by header:GetAttributed("child"..i)
 
@@ -59,9 +62,35 @@ local test = {
 	{31536000,86400},--overkill
 }
 --we could write this shorter as {2,60,3600,86400}
+--> impelemented in format_time
 
 
+---NOTE: for an article on pixelperfection check out http://nclabs.org/articles/2
 
+--like static class, only allow creation of one object
+function pp.init(self)
+	local object = CreateFrame("Frame", nil, UIParent)
+	
+	local reso = ({GetScreenResolutions()})[GetCurrentResolution()]
+	local resowidth, resoheight = string.match(reso, "(%d+)x(%d+)")
+	
+	object.loaded = false
+	object.ui_scale = 0.64 -- = 768/resoheight
+	object.scale_factor = 768/(resoheight*ui_scale)
+	
+	
+	object:RegisterEvent("VARIABLES_LOADED")
+	object:SetScript("OnEvent", self.load) --TODO rename load its shity
+	
+end
+
+function pp.load(self)
+	--setting the multisampling to 1x (anti-aliasing)
+	-- If that doesn't work you must override the anti-aliasing for WoW through a configuration panel for your video card
+	SetMultisampleFormat(1)
+    SetCVar("uiScale", self.ui_scale)
+    SetCVar("useUiScale", 1)
+end
 
 
 
@@ -95,10 +124,10 @@ local function set_attribute(header,attribute)
 	header:SetAttribute("_ignore", old_ignore)
 end
 
-function header.new(self, name, config, attribute, helpful)
+function header.new(self, name, config, attribute)
 	local object = CreateFrame("Frame", name, UIParent, "SecureAuraHeaderTemplate")
 	
-	--[[GetInventorySlotInfo(weapon_slot[i])
+	--[[
 	--inherit functions from two objects (listed in parent table)
 	local parent = {self, getmetatable(object).__index}
 	setmetatable(object, self)
@@ -118,8 +147,7 @@ function header.new(self, name, config, attribute, helpful)
 	
 	object.config = config
 	object.attribute = attribute
-	object.helpful = helpful --simple true/false to check if its the buff or debuff header
-	object.button = {} --here we gonna but the list of buttons created by the button class
+	object.button = {} --here we gonna put the list of buttons created by the button class
 
 	set_attribute(object, attribute)
 
@@ -135,7 +163,8 @@ function header.new(self, name, config, attribute, helpful)
 	if self.helpful then
 		object:RegisterEvent("INVENTORY_CHANGED")
 	end
-	
+	--TODO in header.update. if INVENTORY_CHANGED is called only update temp enchants? prob doesnt work, cause 
+	--if a new one is applied, all other buffs have to move. possible that in this case UNIT_AURA is called as well 
 	--]]
 	
 	object:HookScript("OnEvent", self.update)
@@ -149,14 +178,15 @@ function header.update(self, event, unit)
 	--print("update_header")
 	--TODO make it more understandable
 	if unit ~= "player" and unit ~= "vehicle" and event ~= "PLAYER_ENTERING_WORLD" then return end
-	--WHY does this getting displayed twice ?
+	--WHY is this getting displayed twice ?
 	print(event)
+	--TODO change, is there a way to determine a lower number ? (like update all buffs that are shown + ones that need to be activated) --> check lower child:isshown()
 	local max_aura = self:GetAttribute("wrapAfter") * self:GetAttribute("maxWraps")
 
 	--TODO change where we same the buttons i+2 sucks, especially for debuff header
 	for i=1, max_aura do
 		local child = self:GetAttribute("child"..i)
-		if child and child:IsShown() then
+		if child and child:IsShown() then --TODO what happens if child not shown ? (think its good, cause blizz handles show/hide?)
 			--create button object if needed
 			if not self.button[i+2] then 
 				self.button[i+2] = class.button:new(self, child)
@@ -169,7 +199,7 @@ function header.update(self, event, unit)
 	--TODO test what happens when you apply a temp buff, see if it works properly
 	
 	--only buff header needs to update weapon enchants
-	if self.helpful then
+	if self.config["helpful"] then
 		for i=1, 2 do
 			local child = self:GetAttribute("tempEnchant"..i)
 			if child and child:IsShown() then
@@ -200,6 +230,8 @@ function button.new(self, header, child) --child given by interating over childr
 	object.header = header
 
 	--TODO add pixel perfection here
+	--no anti-aliasing
+	--Multisampling x1
 	
 	--icon
 	object.icon = CreateFrame("Frame", nil, child)
@@ -234,18 +266,18 @@ function button.new(self, header, child) --child given by interating over childr
 	object.gloss.texture:SetVertexColor(unpack(header.config["gloss_color"]))
 	
 	--count text
-	object.count = child:CreateFontString(nil, "OVERLAY")
+	object.count = object:CreateFontString(nil, "OVERLAY")
 	--object.count:SetFontObject(GameFontNormal) --TODO what does this line do exactly ?
 	object.count:SetTextColor(unpack(header.config["count_color"]))
 	object.count:SetFont(unpack(header.config["count_font"]))
-	object.count:SetPoint("BOTTOMRIGHT", child, "BOTTOMRIGHT", header.config["count_x_offset"], header.config["count_y_offset"])
+	object.count:SetPoint("BOTTOMRIGHT", object, "BOTTOMRIGHT", header.config["count_x_offset"], header.config["count_y_offset"])
 	
 	--expiration text
 	object.expiration = child:CreateFontString(nil, "OVERLAY")
 	--object.expiration:SetFontObject(GameFontNormalSmall) --TODO what does this line do exactly ? --probably not even needed?
 	object.expiration:SetTextColor(unpack(header.config["expiration_color"]))
 	object.expiration:SetFont(unpack(header.config["expiration_font"]))
-	object.expiration:SetPoint("TOP", child, "BOTTOM", header.config["expiration_x_offset"], header.config["expiration_y_offset"])
+	object.expiration:SetPoint("TOP", object, "BOTTOM", header.config["expiration_x_offset"], header.config["expiration_y_offset"])
 	
 	object.aura = {} --here we put the aura information. done in button.update
 	object.temp_enchant = {} --or if its an temp enchant, then we put the info in here
@@ -389,6 +421,7 @@ function button.update_aura_expiration(self, elapsed)
 	--Note, here self is NOT the button object, but rather the button.child object
 	--we can access the button object via button.child.button (linked in button.new)
 	--self = self.button
+	--TODO above note still true ?
 
 	if self.last_update < self.header.config["update_frequency"] then
 		self.last_update = self.last_update + elapsed
@@ -449,7 +482,7 @@ function button.update_aura_tooltip(self)
 	--print("update_tooltip_aura")
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	GameTooltip:SetFrameLevel(self:GetFrameLevel() + 3)
-	GameTooltip:SetUnitAura("player", self:GetID(), self.header:GetAttribute("filter")) --replace player with self.header:GetAttribute(unit)
+	GameTooltip:SetUnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter")) --replace player with self.header:GetAttribute(unit)
 	GameTooltip:AddLine(self.aura["caster_name"], self.aura["caster_class_color"].r, self.aura["caster_class_color"].b, self.aura["caster_class_color"].g, true)
 	GameTooltip:Show()
 end
@@ -458,7 +491,7 @@ function button.update_temp_enchant_tooltip(self)
 	--print("update_tooltip_temp_enchant")
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	GameTooltip:SetFrameLevel(self:GetFrameLevel() + 3)
-	GameTooltip:SetInventoryItem("player", self.temp_enchant["slot_id"])
+	GameTooltip:SetInventoryItem(self.header:GetAttribute("unit"), self.temp_enchant["slot_id"]) --GameTooltip:SetInventoryItem("player", self.temp_enchant["slot_id"])
 	GameTooltip:Show()
 end
 
