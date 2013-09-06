@@ -66,6 +66,24 @@ config["debuff"] = {
 	["update_frequency"] = 0.5,
 }
 
+--debug
+config["buff_target"] = {
+	["__index"] = config["default"],
+	["helpful"] = true, --simple true/false to check if its the buff or debuff header
+	["anchor"] = {"CENTER", 0, -15}, --{"CENTER", UIParent, "CENTER", 0, 0},
+	["border_color"] = {0.4, 0.4, 0.4, 1},
+	["update_frequency"] = 1,
+
+}
+
+config["debuff_target"] = {
+	["__index"] = config["default"],
+	["helpful"] = false, --simple true/false to check if its the buff or debuff header
+	["anchor"] = {"CENTER", 0, -266}, --{"CENTER", UIParent, "CENTER", 0, -200},
+	["border_color"] = {0.8, 0, 0, 1},
+	["update_frequency"] = 0.5,
+}
+
 --inheritance for the config
 for k,_ in pairs(config) do 
 	setmetatable(config[k], config[k])
@@ -118,6 +136,39 @@ attribute["debuff"] = {
 	["filter"] = "HARMFUL",
 	["template"] = "ShaanaDebuffButtonTemplate",
 	["point"] = config["debuff"]["anchor"][1],
+	["maxWraps"] = 5,
+}
+
+
+--debug
+attribute["default_target"] = {
+	["unit"] = "target",
+	["minWidth"] = 100,
+	["minHeight"] = 100,
+	["xOffset"] = grow_direction[1],
+	["yOffset"] = grow_direction[2],
+	["wrapAfter"] = 12,
+	["wrapXOffset"] =  grow_direction[3],
+	["wrapYOffset"] = grow_direction[4],
+	["sortMethod"] = "TIME",
+	["sortDir"] = "-",
+}
+
+attribute["buff_target"] = {
+	["__index"] = attribute["default_target"],
+	["filter"] = "HELPFUL",
+	["template"] = "ShaanaBuffButtonTemplate", --never name your template BuffButtonTemplate (Blizzard calls it that way)
+	["point"] = "CENTER", --really only the point
+	["maxWraps"] = 3,
+	["includeWeapons"] = 1,
+  	["weaponTemplate"] = "ShaanaTempEnchantButtonTemplate", --same as for all buffs
+}
+
+attribute["debuff_target"] = {
+	["__index"] = attribute["default_target"],
+	["filter"] = "HARMFUL",
+	["template"] = "ShaanaDebuffButtonTemplate",
+	["point"] = "CENTER",
 	["maxWraps"] = 5,
 }
 

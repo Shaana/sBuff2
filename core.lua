@@ -30,9 +30,6 @@ class.header = header
 local button = {}
 class.button = button
 
-local pp = {}
-class.pp = pp --pixelperfection
-
 --Note: 'button' is always refering to an object created by the class.button:new(...) method, 
 --while 'button_frame' is refering to object returned by header:GetAttributed("child"..i)
 
@@ -49,9 +46,20 @@ class.pp = pp --pixelperfection
 --TODO might be worth it to bring most of the wow api we use alot into the local namespace
 -- local UnitAura = UnitAura ...
 
+--TODO the way pixel perfection is implemented right now i doesnt work, because blizzard code is doing the SetSize() calle before we add the pixel perfection.
+--one solution might be to scale the input values of the config file ... but thats a rather bad solution
+
+
 --TODO there is more lua api ....
 local assert, error, type, select, pairs = assert, error, type, select, pairs
 
+local pp, pp_loaded = nil, false
+
+--load pixel perfection (pp)
+if IsAddOnLoaded("sCore") and sCore.pp._object then
+	pp = sCore.pp
+	pp_loaded = true
+end
 
 local test = {
 	--{start, end} when to change display 
@@ -65,34 +73,6 @@ local test = {
 --> impelemented in format_time
 
 
----NOTE: for an article on pixelperfection check out http://nclabs.org/articles/2
-
---like static class, only allow creation of one object
-function pp.init(self)
-	local object = CreateFrame("Frame", nil, UIParent)
-	
-	local reso = ({GetScreenResolutions()})[GetCurrentResolution()]
-	local resowidth, resoheight = string.match(reso, "(%d+)x(%d+)")
-	
-	object.loaded = false
-	object.ui_scale = 0.64 -- = 768/resoheight
-	object.scale_factor = 768/(resoheight*ui_scale)
-	
-	
-	object:RegisterEvent("VARIABLES_LOADED")
-	object:SetScript("OnEvent", self.load) --TODO rename load its shity
-	
-end
-
-function pp.load(self)
-	--setting the multisampling to 1x (anti-aliasing)
-	-- If that doesn't work you must override the anti-aliasing for WoW through a configuration panel for your video card
-	SetMultisampleFormat(1)
-    SetCVar("uiScale", self.ui_scale)
-    SetCVar("useUiScale", 1)
-end
-
-
 
 local function _inherit(object, class)	
 	assert(type(class) == "table")
@@ -100,6 +80,8 @@ local function _inherit(object, class)
 		object[k] = v
 	end
 end
+
+local pp_attributes = {"xOffset", "yOffset", "wrapXOffset", "wrapYOffset"}
 
 local function _set_attribute(header, attribute)
 	assert(type(attribute) == "table")
@@ -110,6 +92,21 @@ local function _set_attribute(header, attribute)
 	end
 	for k,v in pairs(attribute) do
 		if k ~= "__index" then
+			--pixcel perfection for attributes in pp_attributes table
+			--[[if pp_loaded and  (k == "xOffset" or k == "yOffset" or k == "wrapXOffset" or k == "wrapYOffset") then
+				print("scalling", k, v)
+				v = pp._scale(v)
+			end
+			--]]
+			if pp_loaded then
+				for _,b in ipairs(pp_attributes) do
+					if b == k then
+						print("scalling", k, v)
+						v = pp._scale(v)
+						break
+					end
+				end
+			end
 			header:SetAttribute(k,v)
 		end
 	end
@@ -145,6 +142,11 @@ function header.new(self, name, config, attribute)
 	--Therefore we inherit the options with a function. (basically creating links to each of the class functions)
 	_inherit(object, header)
 	
+	--add pixel perfection, if sCore is loaded
+	if pp_loaded then
+		pp.add_all(object)
+	end
+	
 	object.config = config
 	object.attribute = attribute
 	object.button = {} --here we gonna put the list of buttons created by the button class
@@ -152,7 +154,7 @@ function header.new(self, name, config, attribute)
 	set_attribute(object, attribute)
 
 	object:SetPoint(unpack(config["anchor"]))
-	object:SetScale(1) --keep this always 1 to make pixel perfection work
+	--object:SetScale(1) --keep this always 1 to make pixel perfection work
 	
 	--this will run SecureAuraHeader_Update(header)
 	object:Show()
@@ -226,58 +228,72 @@ function button.new(self, header, child) --child given by interating over childr
 	--unable to remove certain buffs (f.e Shadowform)
 	--Therefore we inherit the options with a function. (basically creating links to each of the class functions)
 	_inherit(object, button)
-
+	
 	object.header = header
 
-	--TODO add pixel perfection here
-	--no anti-aliasing
-	--Multisampling x1
+	--create objects
+	object.icon = CreateFrame("Frame", nil, child)
+	object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
+	object.border = CreateFrame("Frame", nil, child)
+	object.border.texture = object.border:CreateTexture(nil, "BORDER")
+	object.gloss = CreateFrame("Frame", nil, child)
+	object.gloss.texture = object.gloss:CreateTexture(nil, "BORDER")
+	object.count = object:CreateFontString(nil, "OVERLAY")
+	object.expiration = object:CreateFontString(nil, "OVERLAY")
+	
+	--add pixel perfection, if sCore is loaded
+	if pp_loaded then
+		pp.add_all(object)
+		pp.add_all(object.icon)
+		pp.add_all(object.icon.texture)
+		pp.add_all(object.border)
+		pp.add_all(object.border.texture)
+		pp.add_all(object.gloss)
+		pp.add_all(object.gloss.texture)
+		pp.add_all(object.count) 
+		pp.add_all(object.expiration)
+	end
+	
+	--set size for the pp to take effect
+	--TODO does it make sense to do that ? Do it in every case ? or move it up into if pp loaded then ...
+	--object:SetSize(header.config["width"],header.config["height"])
 	
 	--icon
-	object.icon = CreateFrame("Frame", nil, child)
 	object.icon:SetAllPoints(child)
 	object.icon:SetFrameLevel(1)
 	
 	--TODO local i, j = s.borderThickness, s.borderThickness/button:GetSize()
 	local i,j = 3, 3/64 --random
-	object.icon.texture = object.icon:CreateTexture(nil, "BACKGROUND")
 	object.icon.texture:SetPoint("TOPLEFT", i, -i)
 	object.icon.texture:SetPoint("BOTTOMRIGHT", -i, i)
-	object.icon.texture:SetTexCoord(j, 1-j, j, 1-j)
+	object.icon.texture:SetTexCoord(j, 1-j, j, 1-j) --TODO do we need pixel perfection for that ?
 	
 	--border
-	object.border = CreateFrame("Frame", nil, child)
 	object.border:SetAllPoints(child)
 	object.border:SetFrameLevel(2)
 
-	object.border.texture = object.border:CreateTexture(nil, "BORDER")
 	object.border.texture:SetAllPoints(child)
 	object.border.texture:SetTexture(header.config["border_texture"])
 	object.border.texture:SetVertexColor(unpack(header.config["border_color"]))
 
 	--gloss
-	object.gloss = CreateFrame("Frame", nil, child)
 	object.gloss:SetAllPoints(child)
 	object.gloss:SetFrameLevel(3)
 	
-	object.gloss.texture = object.gloss:CreateTexture(nil, "BORDER")
 	object.gloss.texture:SetAllPoints(child)
 	object.gloss.texture:SetTexture(header.config["gloss_texture"])
 	object.gloss.texture:SetVertexColor(unpack(header.config["gloss_color"]))
 	
 	--count text
-	object.count = object:CreateFontString(nil, "OVERLAY")
-	--object.count:SetFontObject(GameFontNormal) --TODO what does this line do exactly ?
 	object.count:SetTextColor(unpack(header.config["count_color"]))
 	object.count:SetFont(unpack(header.config["count_font"]))
 	object.count:SetPoint("BOTTOMRIGHT", object, "BOTTOMRIGHT", header.config["count_x_offset"], header.config["count_y_offset"])
 	
 	--expiration text
-	object.expiration = child:CreateFontString(nil, "OVERLAY")
-	--object.expiration:SetFontObject(GameFontNormalSmall) --TODO what does this line do exactly ? --probably not even needed?
 	object.expiration:SetTextColor(unpack(header.config["expiration_color"]))
 	object.expiration:SetFont(unpack(header.config["expiration_font"]))
 	object.expiration:SetPoint("TOP", object, "BOTTOM", header.config["expiration_x_offset"], header.config["expiration_y_offset"])
+	
 	
 	object.aura = {} --here we put the aura information. done in button.update
 	object.temp_enchant = {} --or if its an temp enchant, then we put the info in here
@@ -309,8 +325,7 @@ local function si_value(value)
 	end
 end
 
---update the button, only here UnitAura is called
---TODO might rename to update_aura ?, so we can create update_temp_enchant as well ?
+--update the button, only here UnitAura() is called
 --local temp_aura = {}
 
 function button.update_aura(self)

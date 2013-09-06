@@ -37,6 +37,7 @@ local function init()
 	header_buff = class.header:new("sBuff_HeaderBuffs", config["buff"], attribute["buff"])
 	header_debuff = class.header:new("sBuff_HeaderDebuffs", config["debuff"], attribute["debuff"])
 
+	--header_buff_taget = class.header:new("sBuff_HeaderBuffs", config["buff_target"], attribute["buff_target"])
 	--header_buff:SetScale(0.55)
 	--header_debuff:SetScale(0.55)
 	
