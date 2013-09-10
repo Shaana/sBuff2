@@ -54,15 +54,18 @@ class.button = button
 
 
 --TODO there is more lua api ....
+--math.max
 local assert, error, type, select, pairs = assert, error, type, select, pairs
 
+--load pixel perfection (pp)
 local pp, pp_loaded = nil, false
 
---load pixel perfection (pp)
 if IsAddOnLoaded("sCore") and sCore.pp._object then
 	pp = sCore.pp
 	pp_loaded = true
 end
+
+
 
 local test = {
 	--{start, end} when to change display 
@@ -73,7 +76,7 @@ local test = {
 	{31536000,86400},--overkill
 }
 --we could write this shorter as {2,60,3600,86400}
---> impelemented in format_time
+--{msec_}
 
 
 
@@ -96,6 +99,7 @@ local function _set_attribute(header, attribute)
 	for k,v in pairs(attribute) do
 		if k ~= "__index" then
 			--TODO check if scalling really works
+			--pixel perfection
 			if pp_loaded then
 				for _,b in ipairs(pp_attributes) do
 					if b == k then
@@ -185,6 +189,7 @@ function header.update(self, event, unit)
 	local max_aura = self:GetAttribute("wrapAfter") * self:GetAttribute("maxWraps")
 
 	--TODO change where we same the buttons i+2 sucks, especially for debuff header
+	--Note: we keep the first two slots for temp_enchants, same for debuffs, even though they don't have temp_enchants
 	for i=1, max_aura do
 		local child = self:GetAttribute("child"..i)
 		if child and child:IsShown() then --TODO what happens if child not shown ? (think its good, cause blizz handles show/hide?)
@@ -312,6 +317,7 @@ function button.new(self, header, child) --child given by interating over childr
 	object.temp_enchant = {} --or if its an temp enchant, then we put the info in here
 		
 	object.last_update = 0
+	object.update_frequency = 0 --current update frequency (depends on time_remaining), set by update_aura_expiration()
 	
 	object.active_tooltip = false
 	
@@ -325,85 +331,40 @@ function button.new(self, header, child) --child given by interating over childr
 end
 
 
---Note: there is more keys, however we'll never need them here
-local aura_keys = {"name", "rank", "icon", "count", "dispel_type", "duration", "expire", "caster", "is_stealable", "should_consolidate", "spell_id", "can_apply_aura", "is_boss_debuff", "value_1"}
-local num_aura_keys = #aura_keys
-
-
---obsolete, remove soon
-local function _update_aura_table(aura, ...)
-	--for k,v in ipairs({...}) do
-	--	print(k,v)
-	--end
-	local t = {...}
-	local num_t = #t
-	--for i=1, #temp_t do
-	--	print(i, temp_t[i])
-	--end
-	--for i=1, #temp_t do
-	--	print(aura_keys[i], temp_t[i] )
-	--	aura[aura_keys[i]] = temp_t[i]
-	--end
-	print(num_aura_keys, #t)
-	print( (num_aura_keys > #t) and #t or num_aura_keys)
-	for i=1, ((num_aura_keys > num_t) and num_t or num_aura_keys ) do --take smaller table
-		aura[aura_keys[i]] = t[i]
-	end
-	print("")
-end
-
---TODO test output
 local function si_value(value)
 	if value >= 1e6 then
-		return ("%.0f m"):format(value)
+		return ("%.0f m"):format(value*1e-6)
 	elseif value >= 1e3 then
-		return ("%.0f k"):format(value)
+		return ("%.0f k"):format(value*1e-3)
 	else
 		return value
 	end
 end
 
---update the button, only here UnitAura() is called
---local temp_aura = {}
 
+--Note: there are more keys, however we don't need them
+local aura_keys = {"name", "rank", "icon", "count", "dispel_type", "duration", "expire", "caster", "is_stealable", "should_consolidate", "spell_id", "can_apply_aura", "is_boss_debuff", "value_1"}
+local num_aura_keys = #aura_keys
+
+--update the button, only here UnitAura() is called
 function button.update_aura(self)
 	--wipe previous table
 	self.buffer.aura = {}
-
-	--_update_aura_table(temp_aura, UnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter")))
-	
-	--if not temp_aura["name"] then
-	--print(temp_aura["name"], self.aura["name"])
-	--end
-	
-	--self.aura = {}
 	
 	local t = {UnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter"))}
 	local num_t = #t
-
+	
+	--Note:	UnitAura() sometimes returns nil when changing zones (e.g teleporting)
+	--		just ignore this update, the UnitAura event will be called again immediately after
+	if not t[1] then --this would be the aura name
+		return
+	end
+	
 	--take smaller table
 	for i=1, ((num_aura_keys > num_t) and num_t or num_aura_keys ) do
 		self.buffer.aura[aura_keys[i]] = t[i]
 	end
 
-	--TODO UnitAura sometimes returns nil when chaning zones
-	--OR a new buff gain in that zone caueses to break things
-	--if not self.aura["name"] then return end
-	--this fix doesnt work like that, cause i need to stop the update before the aura table is overwritten
-	--[[1x sBuff2-2.0 beta1\core.lua:354: attempt to perform arithmetic on field "expire" (a nil value)
-	sBuff2-2.0 beta1\core.lua:354: in function <sBuff2\core.lua:339>
-	--]]
-	--how ? the field a nil value ? cause actually unitaura should always return a number (test) it though
-	
-	
-	print("caster_name: ", self.buffer.aura["caster"])
-	if not self.buffer.aura["caster"] then
-		print(#self.buffer.aura)
-		for k,v in pairs(self.buffer.aura) do 
-			print(k,v)
-		end
-	end
-	
 	--information needed for the tooltip
 	--Note:	there is auras that do not have a caster (e.g Jade Spirit).
 	--		update_aura_tooltip() checks if there is a valid ["caster_name"]
@@ -419,10 +380,11 @@ function button.update_aura(self)
 	--expiration
 	if self.buffer.aura["duration"] > 0 then
 		--TODO maybe switch both lines
-		self.last_update = self.header.config["update_frequency"] --force the first update right away
+		self.last_update = math.max(unpack(self.header.config["update_frequency"])) --force the first update right away
+		self.update_frequency = math.min(unpack(self.header.config["update_frequency"])) --TODO change
 		self:SetScript("OnUpdate", self.update_aura_expiration)
 	else
-		--print("removed update:", self.buffer.aura["name"])
+		print("removed update:", self.buffer.aura["name"])
 		self:SetScript("OnUpdate", nil) --TODO is this actually getting removed from children that are being hidden, when an aura expired ? dont think so ...
 		self.expiration:SetText("")
 	end
@@ -501,22 +463,35 @@ end
 
 --OnUpdate, update time remaining ....
 function button.update_aura_expiration(self, elapsed)
-	--Note, here self is NOT the button object, but rather the button.child object
-	--we can access the button object via button.child.button (linked in button.new)
-	--self = self.button
-	--TODO above note still true ?
 
-	if self.last_update < self.header.config["update_frequency"] then
+	--if self.last_update < self.header.config["update_frequency"] then
+	
+	if self.last_update < self.update_frequency then 
 		self.last_update = self.last_update + elapsed
 		return
 	end
 	
 	self.last_update = 0 --i think its pretty important that its right here, so we won't have a problem with twice same function getting called in the smae milisec
 	
-	--TODO change update_frequency based on time_remaining ?
+	local time_remaining = self.aura["expire"] - GetTime()
+	--print("time remaining: ", time_remaining)
+	
+	assert(#self.header.config["update_frequency"] == 5)
+	assert(#self.header.config["update_format"] == 4)
+	
+	for i=2, 5 do --#self.header.config["update_format"] is 4
+		--Note: 1.2 is just a saftiy factor
+		if time_remaining - 1.2*self.header.config["update_frequency"][i] <= self.header.config["update_format"][i-1] then
+			self.update_frequency = self.header.config["update_frequency"][i-1]
+			break
+		--else
+			--if time_remaining is huge,
+			--self.update_frequency = self.header.config["update_frequency"][i]
+		end
+	end
 	
 	--Note: GetTime() is a 'local' function, doesn't actually ask the server for time
-	self.expiration:SetText(format_time(self.aura["expire"] - GetTime()))
+	self.expiration:SetText(format_time(time_remaining))
 	
 	--TODO remove OnUpdate script here when time remaining < 0 ? really really think this through first 
 	--... might cause problems on the long run
@@ -531,13 +506,12 @@ function button.update_aura_expiration(self, elapsed)
 end
 
 function button.update_temp_enchant_expiration(self, elapsed)
-	--Note, here self is NOT the button object, but rather the button.child object
-	--we can access the button object via button.child.button (linked in button.new)
-	--self = self.button
+
 	if self.last_update < 1 then	
 		self.last_update = self.last_update + elapsed
 		return
 	end
+	
 	self.last_update = 0
 
 	local time_remaining = select(2 + (self.temp_enchant["weapon_slot"]-1)*3, GetWeaponEnchantInfo())
@@ -584,6 +558,7 @@ end
 
 --check for config integrety
 --TODO replace this with some proper check function
+--maybe move to sCore ? make something a little less specific
 
 local function check_config_integrity()
 	--make this function set default values as well ?
@@ -596,13 +571,7 @@ core.check_config_integrity = check_config_integrity
 
 local function check_attribute_integrity()
 
-
-
 end
 core.check_attribute_integrity = check_attribute_integrity
-
-
-
-
 
 
