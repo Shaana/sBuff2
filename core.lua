@@ -49,6 +49,9 @@ class.button = button
 --TODO the way pixel perfection is implemented right now i doesnt work, because blizzard code is doing the SetSize() calle before we add the pixel perfection.
 --one solution might be to scale the input values of the config file ... but thats a rather bad solution
 
+--TODO add textures for 32px and 48px with predefined configs in config.lua (48px will be tricky)
+
+
 
 --TODO there is more lua api ....
 local assert, error, type, select, pairs = assert, error, type, select, pairs
@@ -92,17 +95,13 @@ local function _set_attribute(header, attribute)
 	end
 	for k,v in pairs(attribute) do
 		if k ~= "__index" then
-			--pixcel perfection for attributes in pp_attributes table
-			--[[if pp_loaded and  (k == "xOffset" or k == "yOffset" or k == "wrapXOffset" or k == "wrapYOffset") then
-				print("scalling", k, v)
-				v = pp._scale(v)
-			end
-			--]]
+			--TODO check if scalling really works
 			if pp_loaded then
 				for _,b in ipairs(pp_attributes) do
 					if b == k then
 						print("scalling", k, v)
-						v = pp._scale(v)
+						v = pp.scale(v)
+						print(v, pp._scale_factor)
 						break
 					end
 				end
@@ -194,7 +193,15 @@ function header.update(self, event, unit)
 				self.button[i+2] = class.button:new(self, child)
 			end
 			--update
-			self.button[i+2]:update_aura()
+				self.button[i+2]:update_aura()
+				--print("done button "..i+2)
+			--[[
+				co = coroutine.create(function() 
+				self.button[i+2]:update_aura()
+				print("done button "..i+2)
+			end)
+			coroutine.resume(co)
+			--]]
 		end
 	end
 	
@@ -246,27 +253,33 @@ function button.new(self, header, child) --child given by interating over childr
 		pp.add_all(object)
 		pp.add_all(object.icon)
 		pp.add_all(object.icon.texture)
-		pp.add_all(object.border)
-		pp.add_all(object.border.texture)
-		pp.add_all(object.gloss)
-		pp.add_all(object.gloss.texture)
+		--pp.add_all(object.border)
+		--pp.add_all(object.border.texture)
+		--pp.add_all(object.gloss)
+		--pp.add_all(object.gloss.texture)
 		pp.add_all(object.count) 
 		pp.add_all(object.expiration)
+		
+		--resize with pp.get_scale_factor()
+		object:SetSize(child:GetSize())
 	end
 	
-	--set size for the pp to take effect
-	--TODO does it make sense to do that ? Do it in every case ? or move it up into if pp loaded then ...
-	--object:SetSize(header.config["width"],header.config["height"])
-	
 	--icon
-	object.icon:SetAllPoints(child)
+	object.icon:SetAllPoints(child) --TODO this won't work if we create a 48px border texture, cause we'll have to scale the icon to 48px and still have a 64px border texture with bigger border_inset
 	object.icon:SetFrameLevel(1)
 	
-	--TODO local i, j = s.borderThickness, s.borderThickness/button:GetSize()
-	local i,j = 3, 3/64 --random
+	--TODO, something aint working here as intended ... (the scaling)
+	--some more pixel perfection
+	local i = pp_loaded and pp.scale(header.config["border_inset"]) or header.config["border_inset"]
+	--local i = header.config["border_inset"]
+	--print("printing i here :D  ", i)
+	--print(header.config["border_inset"], pp.scale(header.config["border_inset"]))
+	--Note: if pp is loaded child:GetWidth() will already return the SCALED value, but i will be scalled too, therefor it's all good :D
+	--print(child:GetWidth())
+	local j = i/child:GetWidth() --asuming it's a square button
 	object.icon.texture:SetPoint("TOPLEFT", i, -i)
 	object.icon.texture:SetPoint("BOTTOMRIGHT", -i, i)
-	object.icon.texture:SetTexCoord(j, 1-j, j, 1-j) --TODO do we need pixel perfection for that ?
+	object.icon.texture:SetTexCoord(j, 1-j, j, 1-j)
 	
 	--border
 	object.border:SetAllPoints(child)
@@ -297,21 +310,46 @@ function button.new(self, header, child) --child given by interating over childr
 	
 	object.aura = {} --here we put the aura information. done in button.update
 	object.temp_enchant = {} --or if its an temp enchant, then we put the info in here
-	
+		
 	object.last_update = 0
 	
 	object.active_tooltip = false
+	
+	object.buffer = {}
+	object.buffer.aura = {}
+	object.buffer.temp_enchant = {}
+	--object.buffer.last_update = 0
+	--object.buffer.active_tooltip = false
 	
 	return object
 end
 
 
-local aura_keys = {"name", "rank", "icon", "count", "dispel_type", "duration", "expire", "caster", "is_stealable", "should_consolidate", "spell_id", "can_apply_aura", "is_boss_debuff", "value_1", "value_2", "value_3"}
+--Note: there is more keys, however we'll never need them here
+local aura_keys = {"name", "rank", "icon", "count", "dispel_type", "duration", "expire", "caster", "is_stealable", "should_consolidate", "spell_id", "can_apply_aura", "is_boss_debuff", "value_1"}
+local num_aura_keys = #aura_keys
 
+
+--obsolete, remove soon
 local function _update_aura_table(aura, ...)
-	for i=1, #aura_keys do
-		aura[aura_keys[i]] = select(i, ...)
+	--for k,v in ipairs({...}) do
+	--	print(k,v)
+	--end
+	local t = {...}
+	local num_t = #t
+	--for i=1, #temp_t do
+	--	print(i, temp_t[i])
+	--end
+	--for i=1, #temp_t do
+	--	print(aura_keys[i], temp_t[i] )
+	--	aura[aura_keys[i]] = temp_t[i]
+	--end
+	print(num_aura_keys, #t)
+	print( (num_aura_keys > #t) and #t or num_aura_keys)
+	for i=1, ((num_aura_keys > num_t) and num_t or num_aura_keys ) do --take smaller table
+		aura[aura_keys[i]] = t[i]
 	end
+	print("")
 end
 
 --TODO test output
@@ -329,15 +367,25 @@ end
 --local temp_aura = {}
 
 function button.update_aura(self)
-	local temp_aura = {}
-	_update_aura_table(temp_aura, UnitAura("player", self:GetID(), self.header:GetAttribute("filter")))
+	--wipe previous table
+	self.buffer.aura = {}
+
+	--_update_aura_table(temp_aura, UnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter")))
 	
 	--if not temp_aura["name"] then
-	print(temp_aura["name"],self.aura["name"])
+	--print(temp_aura["name"], self.aura["name"])
 	--end
 	
-	_update_aura_table(self.aura, UnitAura("player", self:GetID(), self.header:GetAttribute("filter")))
+	--self.aura = {}
 	
+	local t = {UnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter"))}
+	local num_t = #t
+
+	--take smaller table
+	for i=1, ((num_aura_keys > num_t) and num_t or num_aura_keys ) do
+		self.buffer.aura[aura_keys[i]] = t[i]
+	end
+
 	--TODO UnitAura sometimes returns nil when chaning zones
 	--OR a new buff gain in that zone caueses to break things
 	--if not self.aura["name"] then return end
@@ -347,10 +395,40 @@ function button.update_aura(self)
 	--]]
 	--how ? the field a nil value ? cause actually unitaura should always return a number (test) it though
 	
+	
+	print("caster_name: ", self.buffer.aura["caster"])
+	if not self.buffer.aura["caster"] then
+		print(#self.buffer.aura)
+		for k,v in pairs(self.buffer.aura) do 
+			print(k,v)
+		end
+	end
+	
 	--information needed for the tooltip
-	self.aura["caster_name"] = UnitName(self.aura["caster"])
-	self.aura["caster_class"] = select(2, UnitClass(self.aura["caster"]))
-	self.aura["caster_class_color"] = RAID_CLASS_COLORS[self.aura["caster_class"]]
+	--Note:	there is auras that do not have a caster (e.g Jade Spirit).
+	--		update_aura_tooltip() checks if there is a valid ["caster_name"]
+	if self.buffer.aura["caster"] then
+		self.buffer.aura["caster_name"] = UnitName(self.buffer.aura["caster"])
+		--it's possible that UnitName(unit) returns nil, if the unit is no longer available (e.g buff from target)
+		if self.buffer.aura["caster_name"] then
+			self.buffer.aura["caster_class"] = select(2, UnitClass(self.buffer.aura["caster"]))
+			self.buffer.aura["caster_class_color"] = RAID_CLASS_COLORS[self.buffer.aura["caster_class"]]
+		end
+	end
+		
+	--expiration
+	if self.buffer.aura["duration"] > 0 then
+		--TODO maybe switch both lines
+		self.last_update = self.header.config["update_frequency"] --force the first update right away
+		self:SetScript("OnUpdate", self.update_aura_expiration)
+	else
+		--print("removed update:", self.buffer.aura["name"])
+		self:SetScript("OnUpdate", nil) --TODO is this actually getting removed from children that are being hidden, when an aura expired ? dont think so ...
+		self.expiration:SetText("")
+	end
+	
+	--
+	self.aura = self.buffer.aura
 	
 	--icon
 	self.icon.texture:SetTexture(self.aura["icon"])
@@ -358,27 +436,17 @@ function button.update_aura(self)
 	--count
 	if self.aura["count"] > 0 then
 		self.count:SetText(self.aura["count"])
+		
+	 --handle special spells
+	elseif self.aura["name"] == "Necrotic Strike" and self.aura["value_1"] then
+		--TODO might better do this by spell_id 73975
+		--if self.aura["spell_id"] == 73975 and self.aura["value_1"] then
+		--use the stack count to display the amount healing absorbed by Necrotic Strike
+		self.count:SetText(si_value(self.aura["value_1"]))
+		
 	else
-		--handle special spells
-		--TODO might better do this by spell_id
-		if self.aura["name"] == "Necrotic Strike" and self.aura["value_1"] then
-			--use the stack count to display the amount healing absorbed by Necrotic Strike
-			self.count:SetText(si_value(self.aura["value_1"]))
-			--TODO replace with si_value function
-		else
-			--usually we just 'hide' it, by setting it to ""
-			self.count:SetText("")
-		end
-	end
-	
-	--expiration
-	if self.aura["duration"] > 0 then
-		self.last_update = self.header.config["update_frequency"] --force the first update right away
-		self:SetScript("OnUpdate", self.update_aura_expiration)
-	else
-		--print("removed update:", self.aura["name"])
-		self:SetScript("OnUpdate", nil) --TODO is this actually getting removed from children that are being hidden, when an aura expired ? dont think so ...
-		self.expiration:SetText("")
+		--usually we just "hide" it, by setting it to ""
+		self.count:SetText("")
 	end
 
 end
@@ -498,7 +566,9 @@ function button.update_aura_tooltip(self)
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	GameTooltip:SetFrameLevel(self:GetFrameLevel() + 3)
 	GameTooltip:SetUnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter")) --replace player with self.header:GetAttribute(unit)
-	GameTooltip:AddLine(self.aura["caster_name"], self.aura["caster_class_color"].r, self.aura["caster_class_color"].b, self.aura["caster_class_color"].g, true)
+	if self.aura["caster_name"] and self.aura["caster_class_color"] then
+		GameTooltip:AddLine(self.aura["caster_name"], self.aura["caster_class_color"].r, self.aura["caster_class_color"].b, self.aura["caster_class_color"].g, true)
+	end
 	GameTooltip:Show()
 end
 

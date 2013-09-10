@@ -33,10 +33,12 @@ config["default"] = {
 	["__index"] = config["core"],
 	["horizontal_spacing"] = 10,
 	["vertical_spacing"] = 28,
-	["height"] = 64, --even needed?
-	["width"] = 64, --even needed?
+	["width"] = 64, --this is needed and should always be the same as in the .xml file 
+	--TODO would be cooler if we can get this value from the xml file
+	["height"] = 64, --this is not really needed, cause we always asume that it's a square. TODO rename to size ?
 	["grow_direction"] = "LEFTDOWN",
 	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\BorderThin",
+	["border_inset"] = 4, --depends on texture, it's 4 px for both included textures
 	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\GlossThin",
 	["gloss_color"] = {0.2, 0.2, 0.2, 1},
 	["count_font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 22, "OUTLINE"}, --config["core"]["font"], --if nil, use default font
@@ -64,6 +66,19 @@ config["debuff"] = {
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -266}, --{"CENTER", UIParent, "CENTER", 0, -200},
 	["border_color"] = {0.8, 0, 0, 1},
 	["update_frequency"] = 0.5,
+}
+
+--32px buttons
+config["default_32"] = {
+	["__index"] = config["core"],
+}
+
+config["buff_32"] = {
+	["__index"] = config["default_32"],
+}
+
+config["debuff_32"] = {
+	["__index"] = config["default_32"],
 }
 
 --debug
