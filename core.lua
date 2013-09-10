@@ -18,6 +18,8 @@ along with sBuff.  If not, see <http://www.gnu.org/licenses/>.
 
 local addon, namespace = ...
 
+_G.sBuff2 = namespace
+
 local core = {}
 namespace.core = core
 
@@ -30,8 +32,8 @@ class.header = header
 local button = {}
 class.button = button
 
---Note: 'button' is always refering to an object created by the class.button:new(...) method, 
---while 'button_frame' is refering to object returned by header:GetAttributed("child"..i)
+--Note:	'button' is always refering to an object created by the class.button:new(...) method, 
+--		while 'button_frame' is refering to object returned by header:GetAttributed("child"..i)
 
 
 --TODO implement a good way to change the update_frequency depending on time_remaining on the aura/temp_enchant
@@ -41,16 +43,17 @@ class.button = button
 --TODO maybe change everything, so it would allow headers for different units ?
 --TODO test (argent tournement horses) buffs while in a vehicle ? --> maybe remove the unit ~= vehicle confidition in OnEvent ?
 
---TODO nothing was ever tested, so test it
-
 --TODO might be worth it to bring most of the wow api we use alot into the local namespace
 -- local UnitAura = UnitAura ...
 
---TODO the way pixel perfection is implemented right now i doesnt work, because blizzard code is doing the SetSize() calle before we add the pixel perfection.
---one solution might be to scale the input values of the config file ... but thats a rather bad solution
 
 --TODO add textures for 32px and 48px with predefined configs in config.lua (48px will be tricky)
 
+--TODO change to vehicle buffs if we're in a vehicle
+--"UNIT_ENTERED_VEHICLE"
+--"UNIT_ENTERING_VEHICLE"
+--"UNIT_EXITED_VEHICLE"
+--"UNIT_EXITING_VEHICLE"
 
 
 --TODO there is more lua api ....
@@ -64,20 +67,6 @@ if IsAddOnLoaded("sCore") and sCore.pp._object then
 	pp = sCore.pp
 	pp_loaded = true
 end
-
-
-
-local test = {
-	--{start, end} when to change display 
-	{2,0}, 			--milisecs (steps, 0.05 probably)
-	{60,2},			--seconds (steps, 1 secs ?)
-	{3600,60}, 		--minutes (
-	{86400,3600},	--hours (steps 1 hour) ?
-	{31536000,86400},--overkill
-}
---we could write this shorter as {2,60,3600,86400}
---{msec_}
-
 
 
 local function _inherit(object, class)	
@@ -151,11 +140,15 @@ function header.new(self, name, config, attribute)
 	end
 	
 	object.config = config
-	object.attribute = attribute
 	object.button = {} --here we gonna put the list of buttons created by the button class
 
-	set_attribute(object, attribute)
-
+	set_attribute(object, attribute) --here happens the inheritence as well
+	
+	--Note: the maximum number of an aura is 40
+	local max_aura_with_wrap = object:GetAttribute("wrapAfter")*object:GetAttribute("maxWraps")
+	object.max_aura = max_aura_with_wrap > 40 and 40 or max_aura_with_wrap
+	
+	
 	object:SetPoint(unpack(config["anchor"]))
 	--object:SetScale(1) --keep this always 1 to make pixel perfection work
 	
@@ -182,31 +175,27 @@ local weapon_slot = {{"MainHandSlot", 16}, {"SecondaryHandSlot", 17}}
 function header.update(self, event, unit)
 	--print("update_header")
 	--TODO make it more understandable
+	print(self, event, unit)
 	if unit ~= "player" and unit ~= "vehicle" and event ~= "PLAYER_ENTERING_WORLD" then return end
-	--WHY is this getting displayed twice ?
-	print(event)
-	--TODO change, is there a way to determine a lower number ? (like update all buffs that are shown + ones that need to be activated) --> check lower child:isshown()
-	local max_aura = self:GetAttribute("wrapAfter") * self:GetAttribute("maxWraps")
 
 	--TODO change where we same the buttons i+2 sucks, especially for debuff header
-	--Note: we keep the first two slots for temp_enchants, same for debuffs, even though they don't have temp_enchants
-	for i=1, max_aura do
+	--Note:	we keep the first two slots for temp_enchants, same for debuffs,
+	--		even though they don't have temp_enchants
+	for i=1, self.max_aura do
 		local child = self:GetAttribute("child"..i)
-		if child and child:IsShown() then --TODO what happens if child not shown ? (think its good, cause blizz handles show/hide?)
-			--create button object if needed
-			if not self.button[i+2] then 
-				self.button[i+2] = class.button:new(self, child)
+		if child  then
+			if child:IsShown() then
+				--create button object if needed
+				if not self.button[i+2] then 
+					self.button[i+2] = class.button:new(self, child)
+				end
+				--update
+				self.button[i+2]:update_aura()
+			else
+				--we can stop if we found the first child that is not shown
+				--TODO this might need some further testing, but seams to work so far
+				break
 			end
-			--update
-				self.button[i+2]:update_aura()
-				--print("done button "..i+2)
-			--[[
-				co = coroutine.create(function() 
-				self.button[i+2]:update_aura()
-				print("done button "..i+2)
-			end)
-			coroutine.resume(co)
-			--]]
 		end
 	end
 	
@@ -220,11 +209,11 @@ function header.update(self, event, unit)
 				if not self.button[i] then 
 					self.button[i] = class.button:new(self, child)
 					--self.button[i].temp_enchant["slot"] = weapon_slot[i]
-					self.button[i].temp_enchant["weapon_slot"] = i --TODO find better name ...
+					self.button[i].temp_enchant["weapon_slot"] = i --can be 1 or 2, stupied field name--TODO find better name ...
 					self.button[i].temp_enchant["slot_id"] = weapon_slot[i][2]
 				end
 				--update
-				self.button[i]:update_temp_enchant(i)
+				self.button[i]:update_temp_enchant() --TODO i still needed ? self.button[i]:update_temp_enchant(i)
 			end
 		end
 	end
@@ -384,12 +373,13 @@ function button.update_aura(self)
 		self.update_frequency = math.min(unpack(self.header.config["update_frequency"])) --TODO change
 		self:SetScript("OnUpdate", self.update_aura_expiration)
 	else
-		print("removed update:", self.buffer.aura["name"])
-		self:SetScript("OnUpdate", nil) --TODO is this actually getting removed from children that are being hidden, when an aura expired ? dont think so ...
+		--Note:	if a button gets hidden (by blizzard's code) the OnUpdate script will not get removed,
+		--		however this doesn't matter, because a hidden frame is not getting updated!
+		self:SetScript("OnUpdate", nil) 
 		self.expiration:SetText("")
 	end
 	
-	--
+	--apply the buffer
 	self.aura = self.buffer.aura
 	
 	--icon
@@ -400,9 +390,10 @@ function button.update_aura(self)
 		self.count:SetText(self.aura["count"])
 		
 	 --handle special spells
-	elseif self.aura["name"] == "Necrotic Strike" and self.aura["value_1"] then
-		--TODO might better do this by spell_id 73975
+	elseif self.aura["spell_id"] == 73975 and self.aura["value_1"] then
+		--TODO test if it works with spell_id
 		--if self.aura["spell_id"] == 73975 and self.aura["value_1"] then
+		--if self.aura["name"] == "Necrotic Strike" and self.aura["value_1"] then
 		--use the stack count to display the amount healing absorbed by Necrotic Strike
 		self.count:SetText(si_value(self.aura["value_1"]))
 		
@@ -461,24 +452,27 @@ local function format_time(time, show_msec, show_sec, show_min, show_hour)
 	end
 end
 
+
+function button._update_expiration(self, elapsed)
+
+end
+
 --OnUpdate, update time remaining ....
 function button.update_aura_expiration(self, elapsed)
-
-	--if self.last_update < self.header.config["update_frequency"] then
-	
 	if self.last_update < self.update_frequency then 
 		self.last_update = self.last_update + elapsed
 		return
 	end
 	
-	self.last_update = 0 --i think its pretty important that its right here, so we won't have a problem with twice same function getting called in the smae milisec
+	self.last_update = 0
 	
 	local time_remaining = self.aura["expire"] - GetTime()
 	--print("time remaining: ", time_remaining)
 	
 	assert(#self.header.config["update_frequency"] == 5)
 	assert(#self.header.config["update_format"] == 4)
-	
+		
+	--TODO handle case; huge time_remaining
 	for i=2, 5 do --#self.header.config["update_format"] is 4
 		--Note: 1.2 is just a saftiy factor
 		if time_remaining - 1.2*self.header.config["update_frequency"][i] <= self.header.config["update_format"][i-1] then
@@ -490,31 +484,28 @@ function button.update_aura_expiration(self, elapsed)
 		end
 	end
 	
-	--Note: GetTime() is a 'local' function, doesn't actually ask the server for time
-	self.expiration:SetText(format_time(time_remaining))
-	
-	--TODO remove OnUpdate script here when time remaining < 0 ? really really think this through first 
-	--... might cause problems on the long run
-	--self.expiration:SetText("0 s")
-	
+	--Note: GetTime() is a "local" function, doesn't actually ask the server for time.
+	self.expiration:SetText(format_time(time_remaining, unpack(self.header.config["update_format"])))
+
 	if self.active_tooltip then
 		self:update_aura_tooltip()
 	--TODO maybe call update_tooltip here ?
 	--right/smart to do it here ?
 	end
-	
 end
 
 function button.update_temp_enchant_expiration(self, elapsed)
-
-	if self.last_update < 1 then	
+	if self.last_update < 1 then	--TODO handle temp_enchants like buffs
 		self.last_update = self.last_update + elapsed
 		return
 	end
 	
 	self.last_update = 0
 
+	--2 + (self.temp_enchant["weapon_slot"]-1)*3 = 3*self.temp_enchant["weapon_slot"] - 1 --better readable ?
 	local time_remaining = select(2 + (self.temp_enchant["weapon_slot"]-1)*3, GetWeaponEnchantInfo())
+	
+	--TODO is it even possible that we get no time_remaining ?
 	
 	if time_remaining then
 		self.expiration:SetText(format_time(time_remaining*0.001))
