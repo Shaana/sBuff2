@@ -28,20 +28,6 @@ local class = namespace.class
 --template = [STRING] -- the XML template to use for the unit buttons. If the created widgets should be something other than Buttons, append the Widget name after a comma.
 --might be possible to make special sort order ?
 
-local temp_header
-function aaaa()
-	local header = temp_header
-	local button = header.button
-	local max_aura = header:GetAttribute("wrapAfter") * header:GetAttribute("maxWraps")
-	for i=1, max_aura do
-		if button[i+2] then
-			print("button "..i, "shown: ",  button[i]:IsShown(), button[i]:GetScript("OnUpdate"))
-		else
-			--print("no button in "..i)
-		end
-	end
-end
-
 local function init()
 	--Debug functions, only uncomment them if you changed the config.lua
 	--and want to make sure it's working.
@@ -50,7 +36,7 @@ local function init()
 
 	header_buff = class.header:new("sBuff_HeaderBuffs", config["buff"], attribute["buff"])
 	header_debuff = class.header:new("sBuff_HeaderDebuffs", config["debuff"], attribute["debuff"])
-	temp_header = header_buff
+
 	--header_buff_taget = class.header:new("sBuff_HeaderBuffs", config["buff_target"], attribute["buff_target"])
 	--header_buff:SetScale(0.55)
 	--header_debuff:SetScale(0.55)
@@ -62,5 +48,6 @@ local function init()
 	ConsolidatedBuffs:Hide()
 end
 
+local test
 
-init()
+--init()

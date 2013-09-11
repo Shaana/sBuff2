@@ -18,8 +18,6 @@ along with sBuff.  If not, see <http://www.gnu.org/licenses/>.
 
 local addon, namespace = ...
 
-_G.sBuff2 = namespace
-
 local core = {}
 namespace.core = core
 
@@ -56,8 +54,8 @@ class.button = button
 --"UNIT_EXITING_VEHICLE"
 
 
---TODO there is more lua api ....
---math.max
+--TODO there is more lua api .... and wow api ...
+--math.max. math.min
 local assert, error, type, select, pairs = assert, error, type, select, pairs
 
 --load pixel perfection (pp)
@@ -142,7 +140,7 @@ function header.new(self, name, config, attribute)
 	object.config = config
 	object.button = {} --here we gonna put the list of buttons created by the button class
 
-	set_attribute(object, attribute) --here happens the inheritence as well
+	set_attribute(object, attribute) --here happens the inheritance
 	
 	--Note: the maximum number of an aura is 40
 	local max_aura_with_wrap = object:GetAttribute("wrapAfter")*object:GetAttribute("maxWraps")
@@ -155,15 +153,24 @@ function header.new(self, name, config, attribute)
 	--this will run SecureAuraHeader_Update(header)
 	object:Show()
 
+	--Note: UNIT_AURA will be added by blizzard's code
 	object:RegisterEvent("PLAYER_ENTERING_WORLD")
-	--[[
-	--basically need for temp enchants
-	if self.helpful then
-		object:RegisterEvent("INVENTORY_CHANGED")
-	end
+	
+	--TODO do we need this or is UNIT_AURA getting called anyway?
+	--object:RegisterEvent("GROUP_ROSTER_UPDATE")
+	
+	--pet battle support (hiding frames during a battle)
+	object:RegisterEvent("PET_BATTLE_CLOSE")
+	object:RegisterEvent("PET_BATTLE_OPENING_DONE")
+
 	--TODO in header.update. if INVENTORY_CHANGED is called only update temp enchants? prob doesnt work, cause 
 	--if a new one is applied, all other buffs have to move. possible that in this case UNIT_AURA is called as well 
-	--]]
+	if self.config["helpful"] then
+		--basically need for temp enchants
+		object:RegisterEvent("INVENTORY_CHANGED")
+	end
+
+
 	
 	object:HookScript("OnEvent", self.update)
 
@@ -172,10 +179,24 @@ end
 
 local weapon_slot = {{"MainHandSlot", 16}, {"SecondaryHandSlot", 17}}
 
+function header._update(self)
+
+end
+
 function header.update(self, event, unit)
 	--print("update_header")
 	--TODO make it more understandable
 	print(self, event, unit)
+	
+	--TODO put the event handling here and move the updating to _update(self)
+	if event == "PET_BATTLE_CLOSE" then
+		self:Show()
+	elseif event == "PET_BATTLE_OPENING_DONE" then
+		self:Hide()
+		return --no point to update anything if it's hidden
+	end
+	
+	--TODO add a check if it's hidden, if yes return
 	if unit ~= "player" and unit ~= "vehicle" and event ~= "PLAYER_ENTERING_WORLD" then return end
 
 	--TODO change where we same the buttons i+2 sucks, especially for debuff header
