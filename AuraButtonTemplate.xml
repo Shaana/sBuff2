@@ -40,6 +40,9 @@
 				self.active_tooltip = true
 				self:update_temp_enchant_tooltip()
 			</OnEnter>
+			<OnLoad>
+				self:RegisterForClicks("RightButtonDown")
+			</OnLoad>
 		</Scripts>
 	</Button>
 </Ui>

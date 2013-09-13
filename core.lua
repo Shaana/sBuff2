@@ -48,6 +48,7 @@ class.button = button
 --TODO add textures for 32px and 48px with predefined configs in config.lua (48px will be tricky)
 
 --TODO change to vehicle buffs if we're in a vehicle
+--means we have to set the attribute unit of the header to vehicle (prob easiest approach
 --"UNIT_ENTERED_VEHICLE"
 --"UNIT_ENTERING_VEHICLE"
 --"UNIT_EXITED_VEHICLE"
@@ -128,8 +129,8 @@ function header.new(self, name, config, attribute)
 	end
 	--]]
 	
-	--Note: tempering with the metatable causes the the secure template to break.
-	--Therefore we inherit the options with a function. (basically creating links to each of the class functions)
+	--Note:	tempering with the metatable causes the the secure template to break.
+	--		Therefore we inherit the options with a function. (basically creating links to each of the class functions)
 	_inherit(object, header)
 	
 	--add pixel perfection, if sCore is loaded
@@ -142,13 +143,12 @@ function header.new(self, name, config, attribute)
 
 	set_attribute(object, attribute) --here happens the inheritance
 	
-	--Note: the maximum number of an aura is 40
+	--Note: the maximum number buffs/debuffs a unit can have is 40
 	local max_aura_with_wrap = object:GetAttribute("wrapAfter")*object:GetAttribute("maxWraps")
 	object.max_aura = max_aura_with_wrap > 40 and 40 or max_aura_with_wrap
 	
 	
 	object:SetPoint(unpack(config["anchor"]))
-	--object:SetScale(1) --keep this always 1 to make pixel perfection work
 	
 	--this will run SecureAuraHeader_Update(header)
 	object:Show()
@@ -161,45 +161,23 @@ function header.new(self, name, config, attribute)
 	
 	--pet battle support (hiding frames during a battle)
 	object:RegisterEvent("PET_BATTLE_CLOSE")
-	object:RegisterEvent("PET_BATTLE_OPENING_DONE")
+	object:RegisterEvent("PET_BATTLE_OPENING_START")
 
-	--TODO in header.update. if INVENTORY_CHANGED is called only update temp enchants? prob doesnt work, cause 
-	--if a new one is applied, all other buffs have to move. possible that in this case UNIT_AURA is called as well 
-	if self.config["helpful"] then
-		--basically need for temp enchants
-		object:RegisterEvent("INVENTORY_CHANGED")
+	--Note:	The UNIT_INVENTORY_CHANGED event is necessary, because when a new temp_enchant is applied/weapon are being switched UNIT_AURA is fired and immediately afterwards UNIT_INVENTORY_CHANGED
+	--		but only after UNIT_INVENTORY_CHANGED was fired the new icon returned by GetInventoryItemTexture() is available
+	--		for some reason button.update_temp_enchant() is only called once! (some smart blizzard code?)
+	if object.config["helpful"] then
+		--Note:	During the first login UNIT_INVENTORY_CHANGED is fired 30+ times (caching of inventory?)
+		--		UPDATE_WEB_TICKET however is always fired after UNIT_INVENTORY_CHANGED, so we wait for UPDATE_WEB_TICKET and then register UNIT_INVENTORY_CHANGED
+		object:RegisterEvent("UPDATE_WEB_TICKET")
 	end
 
-
-	
 	object:HookScript("OnEvent", self.update)
 
 	return object
 end
 
-local weapon_slot = {{"MainHandSlot", 16}, {"SecondaryHandSlot", 17}}
-
-function header._update(self)
-
-end
-
-function header.update(self, event, unit)
-	--print("update_header")
-	--TODO make it more understandable
-	print(self, event, unit)
-	
-	--TODO put the event handling here and move the updating to _update(self)
-	if event == "PET_BATTLE_CLOSE" then
-		self:Show()
-	elseif event == "PET_BATTLE_OPENING_DONE" then
-		self:Hide()
-		return --no point to update anything if it's hidden
-	end
-	
-	--TODO add a check if it's hidden, if yes return
-	if unit ~= "player" and unit ~= "vehicle" and event ~= "PLAYER_ENTERING_WORLD" then return end
-
-	--TODO change where we same the buttons i+2 sucks, especially for debuff header
+function header.update_aura(self)
 	--Note:	we keep the first two slots for temp_enchants, same for debuffs,
 	--		even though they don't have temp_enchants
 	for i=1, self.max_aura do
@@ -213,42 +191,79 @@ function header.update(self, event, unit)
 				--update
 				self.button[i+2]:update_aura()
 			else
-				--we can stop if we found the first child that is not shown
-				--TODO this might need some further testing, but seams to work so far
+				--We can stop if we found the first child that is not shown
 				break
 			end
 		end
 	end
-	
-	--TODO test what happens when you apply a temp buff, see if it works properly
-	
-	--only buff header needs to update weapon enchants
+end
+
+function header.update_temp_enchant(self)
 	if self.config["helpful"] then
 		for i=1, 2 do
 			local child = self:GetAttribute("tempEnchant"..i)
-			if child and child:IsShown() then
+			--Note:	child:IsShown() for tempEnchants is slow for some reason and sometimes returns nil even though the frame is already shown
+			--		We'll check if there is really a temp enchant with hasEnchant,_,_ = GetWeaponEnchantInfo()
+			if child then
 				if not self.button[i] then 
 					self.button[i] = class.button:new(self, child)
-					--self.button[i].temp_enchant["slot"] = weapon_slot[i]
-					self.button[i].temp_enchant["weapon_slot"] = i --can be 1 or 2, stupied field name--TODO find better name ...
-					self.button[i].temp_enchant["slot_id"] = weapon_slot[i][2]
 				end
 				--update
-				self.button[i]:update_temp_enchant() --TODO i still needed ? self.button[i]:update_temp_enchant(i)
+				print(i, self.button[i]:GetID())
+				self.button[i]:update_temp_enchant()
 			end
 		end
 	end
+end
 
+
+--more of an event handler ...
+function header.update(self, event, unit)
+
+	print(self, event, unit)
+	
+	--Note:	temp_enchant update is only necessary for buff headers, the check happens in header.update_temp_enchant(self)
+	if event == "PET_BATTLE_CLOSE" then
+		self:Show()
+		self:update_aura()
+		self:update_temp_enchant()
+	elseif event == "PET_BATTLE_OPENING_START" then
+		self:Hide()
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		self:update_aura()
+		self:update_temp_enchant()
+	elseif event == "UNIT_AURA" then
+		if unit == self:GetAttribute("unit") then
+			--TODO in case we add vehicle support, we might need to change something here 
+			self:update_aura()
+			self:update_temp_enchant()
+		end
+	elseif event == "UNIT_INVENTORY_CHANGED" then
+		--TODO in header.update. if INVENTORY_CHANGED is called only update temp enchants? prob doesnt work, cause 
+		--if a new one is applied, all other buffs have to move. possible that in this case UNIT_AURA is called as well,maybe the frames are just moved
+		if unit == self:GetAttribute("unit") then
+			--self:update_aura()
+			self:update_temp_enchant()
+		end
+	elseif event == "UPDATE_WEB_TICKET" then
+		self:RegisterEvent("UNIT_INVENTORY_CHANGED")
+		self:UnregisterEvent("UPDATE_WEB_TICKET")
+		self:update_aura()
+		self:update_temp_enchant()
+	else
+		print("error, don't know what to do with this event: ", event)
+	end 
+	
 end
 
 ---button class
 
-function button.new(self, header, child) --child given by interating over children from the header
+function button.new(self, header, child) --child given by iterating over children from the header
 	local object = child
 
-	--Note: tempering with the metatable causes the the secure template to break. (Lots of errors while in combat due to protected functions,
-	--unable to remove certain buffs (f.e Shadowform)
-	--Therefore we inherit the options with a function. (basically creating links to each of the class functions)
+	--Note:	tempering with the metatable causes the the secure template to break. (Lots of errors while in combat due to protected functions,
+	--		unable to remove certain buffs (f.e Shadowform)
+	--		Therefore we inherit the options with a function. (basically creating links to each of the class functions)
 	_inherit(object, button)
 	
 	object.header = header
@@ -324,8 +339,7 @@ function button.new(self, header, child) --child given by interating over childr
 	
 	
 	object.aura = {} --here we put the aura information. done in button.update
-	object.temp_enchant = {} --or if its an temp enchant, then we put the info in here
-		
+
 	object.last_update = 0
 	object.update_frequency = 0 --current update frequency (depends on time_remaining), set by update_aura_expiration()
 	
@@ -333,9 +347,6 @@ function button.new(self, header, child) --child given by interating over childr
 	
 	object.buffer = {}
 	object.buffer.aura = {}
-	object.buffer.temp_enchant = {}
-	--object.buffer.last_update = 0
-	--object.buffer.active_tooltip = false
 	
 	return object
 end
@@ -352,21 +363,22 @@ local function si_value(value)
 end
 
 
---Note: there are more keys, however we don't need them
-local aura_keys = {"name", "rank", "icon", "count", "dispel_type", "duration", "expire", "caster", "is_stealable", "should_consolidate", "spell_id", "can_apply_aura", "is_boss_debuff", "value_1"}
+--Note:	there are more keys, however we don't need them
+local aura_keys = {"name", "rank", "icon", "count", "dispel_type", "duration", "expire", "caster", "is_stealable", "should_consolidate", "spell_id", "can_apply_aura", "is_boss_debuff", "value_1", "value_2"}
 local num_aura_keys = #aura_keys
 
 --update the button, only here UnitAura() is called
 function button.update_aura(self)
 	--wipe previous table
 	self.buffer.aura = {}
-	
+
+	--Note:	self:GetID() returns the aura index
 	local t = {UnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter"))}
 	local num_t = #t
 	
 	--Note:	UnitAura() sometimes returns nil when changing zones (e.g teleporting)
 	--		just ignore this update, the UnitAura event will be called again immediately after
-	if not t[1] then --this would be the aura name
+	if not t[1] then
 		return
 	end
 	
@@ -389,13 +401,14 @@ function button.update_aura(self)
 		
 	--expiration
 	if self.buffer.aura["duration"] > 0 then
-		--TODO maybe switch both lines
-		self.last_update = math.max(unpack(self.header.config["update_frequency"])) --force the first update right away
-		self.update_frequency = math.min(unpack(self.header.config["update_frequency"])) --TODO change
+		--Note:	 we force an update if self.last_update > self.update_frequency
+		--randomly picked numbers to force an update
+		self.last_update = 2
+		self.update_frequency = 1
 		self:SetScript("OnUpdate", self.update_aura_expiration)
 	else
 		--Note:	if a button gets hidden (by blizzard's code) the OnUpdate script will not get removed,
-		--		however this doesn't matter, because a hidden frame is not getting updated!
+		--		however this doesn't matter, because a hidden frame is not getting updated anyway!
 		self:SetScript("OnUpdate", nil) 
 		self.expiration:SetText("")
 	end
@@ -410,14 +423,14 @@ function button.update_aura(self)
 	if self.aura["count"] > 0 then
 		self.count:SetText(self.aura["count"])
 		
-	 --handle special spells
-	elseif self.aura["spell_id"] == 73975 and self.aura["value_1"] then
+	 --handle special spells 
+	elseif self.aura["spell_id"] == 73975 and self.aura["value_2"] then
 		--TODO test if it works with spell_id
 		--if self.aura["spell_id"] == 73975 and self.aura["value_1"] then
 		--if self.aura["name"] == "Necrotic Strike" and self.aura["value_1"] then
 		--use the stack count to display the amount healing absorbed by Necrotic Strike
-		self.count:SetText(si_value(self.aura["value_1"]))
-		
+		self.count:SetText(si_value(self.aura["value_2"]))
+	
 	else
 		--usually we just "hide" it, by setting it to ""
 		self.count:SetText("")
@@ -426,18 +439,18 @@ function button.update_aura(self)
 end
 
 function button.update_temp_enchant(self)
-
-	--icon
-	self.icon.texture:SetTexture(GetInventoryItemTexture("player", self.temp_enchant["slot_id"]))
+	--Note:	self:GetID() returns the InventoryId and will either be 16 (MainHandSlot) or 17 (SecondaryHandSlot)
+	local has_enchant, time_remaining, count = select(1 + (self:GetID()-16)*3, GetWeaponEnchantInfo())
 	
-	--i is either 1 or 2 (main, off)
-	local has_enchant, time_remaining, count = select(1 + (self.temp_enchant["weapon_slot"]-1)*3, GetWeaponEnchantInfo())
-
 	if not has_enchant then
 		--DEBUG
 		print("error in button.update_temp_enchant(self,i), this error should never occure")
-	end
+		--this always happens if a weapon without enchant is equipped after having one with with enchant equipped -->prob no longer the case that we listen to UNIT_INVENTORY_CHANGED
+	end 
 	
+	--icon
+	self.icon.texture:SetTexture(GetInventoryItemTexture(self.header:GetAttribute("unit"), self:GetID()))
+		
 	--count
 	if count and count > 0 then
 		self.count:SetText(count)
@@ -447,7 +460,10 @@ function button.update_temp_enchant(self)
 
 	--expiration
 	if time_remaining and time_remaining > 0 then
-		self.last_update = 1 --TODO change with proper value
+		--Note:	 we force an update if self.last_update > self.update_frequency
+		--randomly picked numbers to force an update
+		self.last_update = 2
+		self.update_frequency = 1
 		self:SetScript("OnUpdate", self.update_temp_enchant_expiration)
 	else
 		--print("removed update:", self.aura["name"])
@@ -473,10 +489,12 @@ local function format_time(time, show_msec, show_sec, show_min, show_hour)
 	end
 end
 
-
+--[[
 function button._update_expiration(self, elapsed)
 
 end
+
+--]]
 
 --OnUpdate, update time remaining ....
 function button.update_aura_expiration(self, elapsed)
@@ -488,72 +506,75 @@ function button.update_aura_expiration(self, elapsed)
 	self.last_update = 0
 	
 	local time_remaining = self.aura["expire"] - GetTime()
-	--print("time remaining: ", time_remaining)
-	
-	assert(#self.header.config["update_frequency"] == 5)
-	assert(#self.header.config["update_format"] == 4)
-		
-	--TODO handle case; huge time_remaining
-	for i=2, 5 do --#self.header.config["update_format"] is 4
+
+	--change the update_frequency depending on the remaining time from the aura and the update_format
+	--asume worst case
+	self.update_frequency = self.header.config["update_frequency"][5]
+	--Note: #self.header.config["update_format"] is 4
+	for i=1, 4 do 
 		--Note: 1.2 is just a saftiy factor
-		if time_remaining - 1.2*self.header.config["update_frequency"][i] <= self.header.config["update_format"][i-1] then
-			self.update_frequency = self.header.config["update_frequency"][i-1]
+		if time_remaining - 1.2*self.header.config["update_frequency"][i+1] <= self.header.config["update_format"][i] then
+			self.update_frequency = self.header.config["update_frequency"][i]
 			break
-		--else
-			--if time_remaining is huge,
-			--self.update_frequency = self.header.config["update_frequency"][i]
 		end
 	end
 	
-	--Note: GetTime() is a "local" function, doesn't actually ask the server for time.
+	--Note: GetTime() is a "local" function and therefore doesn't actually ask the server for time.
 	self.expiration:SetText(format_time(time_remaining, unpack(self.header.config["update_format"])))
 
+	--update tooltip (if the mouse on the frame)
 	if self.active_tooltip then
 		self:update_aura_tooltip()
-	--TODO maybe call update_tooltip here ?
-	--right/smart to do it here ?
 	end
 end
 
 function button.update_temp_enchant_expiration(self, elapsed)
-	if self.last_update < 1 then	--TODO handle temp_enchants like buffs
+	if self.last_update < self.update_frequency then
 		self.last_update = self.last_update + elapsed
 		return
 	end
 	
 	self.last_update = 0
 
-	--2 + (self.temp_enchant["weapon_slot"]-1)*3 = 3*self.temp_enchant["weapon_slot"] - 1 --better readable ?
-	local time_remaining = select(2 + (self.temp_enchant["weapon_slot"]-1)*3, GetWeaponEnchantInfo())
-	
-	--TODO is it even possible that we get no time_remaining ?
-	
-	if time_remaining then
-		self.expiration:SetText(format_time(time_remaining*0.001))
-	else
+	local time_remaining = select(2 + (self:GetID()-16)*3, GetWeaponEnchantInfo())
+
+	if not time_remaining then
+		--TODO is it even possible that we get no time_remaining ?
 		--DEBUG
 		print("error in update_temp_enchant_expiration, no time_remaining", time_remaining)
 	end
+
+	--change the update_frequency depending on the remaining time from the aura and the update_format
+	--asume worst case
+	self.update_frequency = self.header.config["update_frequency"][5]
+	--Note: #self.header.config["update_format"] is 4
+	for i=1, 4 do 
+		--Note: 1.2 is just a saftiy factor
+		if time_remaining - 1.2*self.header.config["update_frequency"][i+1] <= self.header.config["update_format"][i] then
+			self.update_frequency = self.header.config["update_frequency"][i]
+			break
+		end
+	end
+	
+	--update text
+	--Note:	for some reason the time needs to be divided by 1000
+	self.expiration:SetText(format_time(time_remaining*0.001))
 	
 	if self.active_tooltip then
 		self:update_temp_enchant_tooltip()
-		--TODO maybe call update_tooltip here ?
-		--right/smart to do it here ?
 	end
-	
-	--TODO maybe call update_tooltip here ?
+
 end
 
 
 --TODO might wanna call the update_expiration function to make sure the tooltip is in sync with the expiration time
 --however this might cause troubles again.
 function button.update_aura_tooltip(self)
-	--print("update_tooltip_aura")
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	GameTooltip:SetFrameLevel(self:GetFrameLevel() + 3)
-	GameTooltip:SetUnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter")) --replace player with self.header:GetAttribute(unit)
+	GameTooltip:SetUnitAura(self.header:GetAttribute("unit"), self:GetID(), self.header:GetAttribute("filter"))
 	if self.aura["caster_name"] and self.aura["caster_class_color"] then
-		GameTooltip:AddLine(self.aura["caster_name"], self.aura["caster_class_color"].r, self.aura["caster_class_color"].b, self.aura["caster_class_color"].g, true)
+		GameTooltip:AddLine(self.aura["caster_name"], self.aura["caster_class_color"].r, self.aura["caster_class_color"].g, self.aura["caster_class_color"].b, true)
 	end
 	GameTooltip:Show()
 end
@@ -562,28 +583,17 @@ function button.update_temp_enchant_tooltip(self)
 	--print("update_tooltip_temp_enchant")
 	GameTooltip:SetOwner(self, "ANCHOR_BOTTOMLEFT")
 	GameTooltip:SetFrameLevel(self:GetFrameLevel() + 3)
-	GameTooltip:SetInventoryItem(self.header:GetAttribute("unit"), self.temp_enchant["slot_id"]) --GameTooltip:SetInventoryItem("player", self.temp_enchant["slot_id"])
+	GameTooltip:SetInventoryItem(self.header:GetAttribute("unit"), self:GetID())
 	GameTooltip:Show()
 end
 
 
 
---check for config integrety
---TODO replace this with some proper check function
---maybe move to sCore ? make something a little less specific
-
-local function check_config_integrity()
-	--make this function set default values as well ?
-	--if attribute "includeWeapons", 1 given, we expect  "weaponTemplate", buffTemplate as well
-	--__attribte expected for the coresponding table
-	--anchor expected
-end
-core.check_config_integrity = check_config_integrity
 
 
-local function check_attribute_integrity()
 
-end
-core.check_attribute_integrity = check_attribute_integrity
+
+
+
 
 

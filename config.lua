@@ -47,27 +47,24 @@ config["default"] = {
 	["expiration_color"] = {1,1,1,1},
 	["count_x_offset"] = -6,
 	["count_y_offset"] = 8,
-	["expiration_x_offxet"] = 2,
+	["expiration_x_offset"] = 2,
 	["expiration_y_offset"] = 0,
+	["update_format"] = {4,180,3600,86400}, --{msec, sec, min, hour}, e.g time_remaning < sec --> show seconds
 }
 
 config["buff"] = {
 	["__index"] = config["default"],
-	["helpful"] = true, --simple true/false to check if its the buff or debuff header
+	["helpful"] = true, --simple true/false to check if it's a buff or debuff header
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -15}, --{"CENTER", UIParent, "CENTER", 0, 0},
 	["border_color"] = {0.4, 0.4, 0.4, 1},
-	["update_format"] = {4,180,3600,86400}, --{msec, sec, min, hour}, e.g time_remaning < sec --> show seconds
 	["update_frequency"] = {0.1,0.5,30,60,60} , -- every 0.1s if below 2s, every 0.5s if below 60s, every 30s if below 3600, every 60s if below 86400
-	
-
 }
 
 config["debuff"] = {
 	["__index"] = config["default"],
-	["helpful"] = false, --simple true/false to check if its the buff or debuff header
+	["helpful"] = false, --simple true/false to check if it's a buff or debuff header
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -266}, --{"CENTER", UIParent, "CENTER", 0, -200},
 	["border_color"] = {0.8, 0, 0, 1},
-	["update_format"] = {2,60,3600,86400},
 	["update_frequency"] = {0.1,0.5,60,60,60}, 
 }
 
@@ -84,28 +81,17 @@ config["debuff_32"] = {
 	["__index"] = config["default_32"],
 }
 
---debug
-config["buff_target"] = {
-	["__index"] = config["default"],
-	["helpful"] = true, --simple true/false to check if its the buff or debuff header
-	["anchor"] = {"CENTER", 0, -15}, --{"CENTER", UIParent, "CENTER", 0, 0},
-	["border_color"] = {0.4, 0.4, 0.4, 1},
-	["update_frequency"] = 1,
 
-}
-
-config["debuff_target"] = {
-	["__index"] = config["default"],
-	["helpful"] = false, --simple true/false to check if its the buff or debuff header
-	["anchor"] = {"CENTER", 0, -266}, --{"CENTER", UIParent, "CENTER", 0, -200},
-	["border_color"] = {0.8, 0, 0, 1},
-	["update_frequency"] = 0.5,
-}
 
 --inheritance for the config
 for k,_ in pairs(config) do 
 	setmetatable(config[k], config[k])
 end
+
+
+
+
+
 
 ---Attributes section (advanced)
 --do NOT touch this if you're not certain what you're doing!
@@ -146,7 +132,7 @@ attribute["buff"] = {
 	["point"] = config["buff"]["anchor"][1], --really only the point
 	["maxWraps"] = 3,
 	["includeWeapons"] = 1,
-  	["weaponTemplate"] = "ShaanaTempEnchantButtonTemplate", --same as for all buffs
+  	["weaponTemplate"] = "ShaanaTempEnchantButtonTemplate",
 }
 
 attribute["debuff"] = {
@@ -158,39 +144,8 @@ attribute["debuff"] = {
 }
 
 
---debug
-attribute["default_target"] = {
-	["unit"] = "target",
-	["minWidth"] = 100,
-	["minHeight"] = 100,
-	["xOffset"] = grow_direction[1],
-	["yOffset"] = grow_direction[2],
-	["wrapAfter"] = 12,
-	["wrapXOffset"] =  grow_direction[3],
-	["wrapYOffset"] = grow_direction[4],
-	["sortMethod"] = "TIME",
-	["sortDir"] = "-",
-}
+--Note:	inheritance for attribute is directly coded into set_attribute(frame, attribute)
 
-attribute["buff_target"] = {
-	["__index"] = attribute["default_target"],
-	["filter"] = "HELPFUL",
-	["template"] = "ShaanaBuffButtonTemplate", --never name your template BuffButtonTemplate (Blizzard calls it that way)
-	["point"] = "CENTER", --really only the point
-	["maxWraps"] = 3,
-	["includeWeapons"] = 1,
-  	["weaponTemplate"] = "ShaanaTempEnchantButtonTemplate", --same as for all buffs
-}
 
-attribute["debuff_target"] = {
-	["__index"] = attribute["default_target"],
-	["filter"] = "HARMFUL",
-	["template"] = "ShaanaDebuffButtonTemplate",
-	["point"] = "CENTER",
-	["maxWraps"] = 5,
-}
-
---inheritance for attribute is directly coded into set_attribute(frame, attribute)
---currently i can only inherit options from tables
 
 
