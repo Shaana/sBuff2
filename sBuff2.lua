@@ -48,17 +48,17 @@ local function init()
 	ConsolidatedBuffs:Hide()
 end
 
---[[
-local test_frame = CreateFrame("Frame", nil, UIParent)
 
+--local test_frame = CreateFrame("Frame", nil, UIParent)
+--[[
 test_frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
 test_frame:RegisterEvent("UPDATE_WEB_TICKET")
 test_frame:RegisterEvent("UPDATE_TICKET")
 test_frame:RegisterEvent("UNIT_AURA")
 test_frame:RegisterEvent("PLAYER_ENTERING_WORLD")
-
+--]]
 --test_frame:RegisterAllEvents()
 
-test_frame:SetScript("OnEvent", function(...) print(...) end)
---]]
+--test_frame:SetScript("OnEvent", function(...) print(...) end)
+
 init()

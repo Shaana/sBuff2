@@ -38,7 +38,10 @@
 		<Scripts>
 			<OnEnter>
 				self.active_tooltip = true
-				self:update_temp_enchant_tooltip()
+				--little workaround, because of slow TempEnchant update
+				if self.update_temp_enchant_tooltip then
+					self:update_temp_enchant_tooltip()
+				end
 			</OnEnter>
 			<OnLoad>
 				self:RegisterForClicks("RightButtonDown")

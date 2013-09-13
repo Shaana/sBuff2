@@ -140,6 +140,7 @@ function header.new(self, name, config, attribute)
 	
 	object.config = config
 	object.button = {} --here we gonna put the list of buttons created by the button class
+	object._temp_button = {} --buttons for the TempEnchant workaround in header.update_temp_enchant() (see below)
 
 	set_attribute(object, attribute) --here happens the inheritance
 	
@@ -153,7 +154,7 @@ function header.new(self, name, config, attribute)
 	--this will run SecureAuraHeader_Update(header)
 	object:Show()
 
-	--Note: UNIT_AURA will be added by blizzard's code
+	--Note: UNIT_AURA will be added by Blizzard's code
 	object:RegisterEvent("PLAYER_ENTERING_WORLD")
 	
 	--TODO do we need this or is UNIT_AURA getting called anyway?
@@ -163,13 +164,13 @@ function header.new(self, name, config, attribute)
 	object:RegisterEvent("PET_BATTLE_CLOSE")
 	object:RegisterEvent("PET_BATTLE_OPENING_START")
 
-	--Note:	The UNIT_INVENTORY_CHANGED event is necessary, because when a new temp_enchant is applied/weapon are being switched UNIT_AURA is fired and immediately afterwards UNIT_INVENTORY_CHANGED
+	--Note:	The UNIT_INVENTORY_CHANGED event is necessary, because when a new TempEnchant is applied/weapon are being switched UNIT_AURA is fired and immediately afterwards UNIT_INVENTORY_CHANGED
 	--		but only after UNIT_INVENTORY_CHANGED was fired the new icon returned by GetInventoryItemTexture() is available
 	--		for some reason button.update_temp_enchant() is only called once! (some smart blizzard code?)
 	if object.config["helpful"] then
 		--Note:	During the first login UNIT_INVENTORY_CHANGED is fired 30+ times (caching of inventory?)
-		--		UPDATE_WEB_TICKET however is always fired after UNIT_INVENTORY_CHANGED, so we wait for UPDATE_WEB_TICKET and then register UNIT_INVENTORY_CHANGED
-		object:RegisterEvent("UPDATE_WEB_TICKET")
+		--		UPDATE_TICKET is usually fired after UNIT_INVENTORY_CHANGED, so we wait for UPDATE_TICKET and then register UNIT_INVENTORY_CHANGED
+		object:RegisterEvent("UPDATE_TICKET")
 	end
 
 	object:HookScript("OnEvent", self.update)
@@ -202,14 +203,34 @@ function header.update_temp_enchant(self)
 	if self.config["helpful"] then
 		for i=1, 2 do
 			local child = self:GetAttribute("tempEnchant"..i)
-			--Note:	child:IsShown() for tempEnchants is slow for some reason and sometimes returns nil even though the frame is already shown
-			--		We'll check if there is really a temp enchant with hasEnchant,_,_ = GetWeaponEnchantInfo()
+
+			--Note:	This is a little workaround, because for some unknown reason GetWeaponEnchantInfo() indicates correctly that there is a TempEnchant applied, 
+			--		however header:GetAttribute("tempEnchant"..i) still returns nil. (This problem only seams to occur before the first time a TempEnchant is applied)
+			--		We add a OnUpdate script to a frame and wait for the information to become available.
+			if not child and select(1 + (i-1)*3, GetWeaponEnchantInfo()) then
+				if not self._temp_button[i] then
+					self._temp_button[i] = CreateFrame("Frame", nil, UIParent)
+				end
+				self._temp_button[i].header = self
+				self._temp_button[i].index = i
+				self._temp_button[i].child = nil
+				
+				self._temp_button[i]:SetScript("OnUpdate", function(self, elapsed) 
+					self.child = self.header:GetAttribute("tempEnchant"..self.index)
+					if self.child then
+						self:SetScript("OnUpdate", nil)
+						self.header:update_temp_enchant()
+					end
+				end)
+			end
+
+			--Note:	child:IsShown() for TempEnchants is slow for some reason and sometimes returns nil even though the frame is already shown
+			--		We'll check if there is really a temp enchant with hasEnchant,_,_ = GetWeaponEnchantInfo() in button.udpate_temp_enchant()
 			if child then
 				if not self.button[i] then 
 					self.button[i] = class.button:new(self, child)
 				end
 				--update
-				print(i, self.button[i]:GetID())
 				self.button[i]:update_temp_enchant()
 			end
 		end
@@ -220,6 +241,7 @@ end
 --more of an event handler ...
 function header.update(self, event, unit)
 
+	--DEBUG
 	print(self, event, unit)
 	
 	--Note:	temp_enchant update is only necessary for buff headers, the check happens in header.update_temp_enchant(self)
@@ -239,16 +261,12 @@ function header.update(self, event, unit)
 			self:update_temp_enchant()
 		end
 	elseif event == "UNIT_INVENTORY_CHANGED" then
-		--TODO in header.update. if INVENTORY_CHANGED is called only update temp enchants? prob doesnt work, cause 
-		--if a new one is applied, all other buffs have to move. possible that in this case UNIT_AURA is called as well,maybe the frames are just moved
 		if unit == self:GetAttribute("unit") then
-			--self:update_aura()
 			self:update_temp_enchant()
 		end
-	elseif event == "UPDATE_WEB_TICKET" then
+	elseif event == "UPDATE_TICKET" then
 		self:RegisterEvent("UNIT_INVENTORY_CHANGED")
-		self:UnregisterEvent("UPDATE_WEB_TICKET")
-		self:update_aura()
+		self:UnregisterEvent("UPDATE_TICKET")
 		self:update_temp_enchant()
 	else
 		print("error, don't know what to do with this event: ", event)
@@ -442,24 +460,29 @@ function button.update_temp_enchant(self)
 	--Note:	self:GetID() returns the InventoryId and will either be 16 (MainHandSlot) or 17 (SecondaryHandSlot)
 	local has_enchant, time_remaining, count = select(1 + (self:GetID()-16)*3, GetWeaponEnchantInfo())
 	
+	--print("in BUTTON.update_temp_enchant")
+	--print(has_enchant, time_remaining, count)
+	
 	if not has_enchant then
 		--DEBUG
-		print("error in button.update_temp_enchant(self,i), this error should never occure")
+		--print("error in button.update_temp_enchant(self,i), this error should never occure")
 		--this always happens if a weapon without enchant is equipped after having one with with enchant equipped -->prob no longer the case that we listen to UNIT_INVENTORY_CHANGED
+		return
 	end 
+	
 	
 	--icon
 	self.icon.texture:SetTexture(GetInventoryItemTexture(self.header:GetAttribute("unit"), self:GetID()))
 		
 	--count
-	if count and count > 0 then
+	if count > 0 then
 		self.count:SetText(count)
 	else
 		self.count:SetText("")
 	end
 
 	--expiration
-	if time_remaining and time_remaining > 0 then
+	if time_remaining > 0 then
 		--Note:	 we force an update if self.last_update > self.update_frequency
 		--randomly picked numbers to force an update
 		self.last_update = 2
@@ -533,16 +556,21 @@ function button.update_temp_enchant_expiration(self, elapsed)
 		self.last_update = self.last_update + elapsed
 		return
 	end
-	
+
 	self.last_update = 0
 
 	local time_remaining = select(2 + (self:GetID()-16)*3, GetWeaponEnchantInfo())
+	
+
 
 	if not time_remaining then
 		--TODO is it even possible that we get no time_remaining ?
 		--DEBUG
 		print("error in update_temp_enchant_expiration, no time_remaining", time_remaining)
 	end
+
+	--Note:	for some reason the time returnd by GetWeaponEnchantInfo() needs to be divided by 1000 in order to get seconds
+	time_remaining = time_remaining*0.001
 
 	--change the update_frequency depending on the remaining time from the aura and the update_format
 	--asume worst case
@@ -555,10 +583,11 @@ function button.update_temp_enchant_expiration(self, elapsed)
 			break
 		end
 	end
-	
+
+	print(self.update_frequency)
+
 	--update text
-	--Note:	for some reason the time needs to be divided by 1000
-	self.expiration:SetText(format_time(time_remaining*0.001))
+	self.expiration:SetText(format_time(time_remaining))
 	
 	if self.active_tooltip then
 		self:update_temp_enchant_tooltip()

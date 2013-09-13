@@ -57,7 +57,7 @@ config["buff"] = {
 	["helpful"] = true, --simple true/false to check if it's a buff or debuff header
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -15}, --{"CENTER", UIParent, "CENTER", 0, 0},
 	["border_color"] = {0.4, 0.4, 0.4, 1},
-	["update_frequency"] = {0.1,0.5,30,60,60} , -- every 0.1s if below 2s, every 0.5s if below 60s, every 30s if below 3600, every 60s if below 86400
+	["update_frequency"] = {0.1,0.5,30,60,61} , -- every 0.1s if below 2s, every 0.5s if below 60s, every 30s if below 3600, every 60s if below 86400
 }
 
 config["debuff"] = {
@@ -65,7 +65,7 @@ config["debuff"] = {
 	["helpful"] = false, --simple true/false to check if it's a buff or debuff header
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -266}, --{"CENTER", UIParent, "CENTER", 0, -200},
 	["border_color"] = {0.8, 0, 0, 1},
-	["update_frequency"] = {0.1,0.5,60,60,60}, 
+	["update_frequency"] = {0.1,0.5,30,60,61}, 
 }
 
 --32px buttons
