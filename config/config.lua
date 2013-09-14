@@ -41,9 +41,9 @@ config["default"] = {
 	["sortMethod"] = "TIME",
 	["sortDir"] = "-",
 	--rest
-	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\Border",
+	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\Border64",
 	["border_inset"] = 4, --depends on texture, it's 4 px for both included textures
-	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\Gloss",
+	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\Gloss64",
 	["gloss_color"] = {0.2, 0.2, 0.2, 1},
 	["count_font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 22, "OUTLINE"}, --config["core"]["font"], --if nil, use default font
 	["count_color"] = {1,1,1,1},
