@@ -36,6 +36,7 @@ class.button = button
 
 --TODO	maybe change everything, so it would allow headers for different units ?
 --TODO	add textures for 32px and 48px with predefined configs in config.lua (48px will be tricky)
+--		the texture needs to be 64px (power of 2), but the button needs to be 48 px (otherwise we have problems with canceling - might click on the wrong button)
 --TODO	make sure tooltips are in sync with time_remaining and whatever blizzard displays
 --		might wanna call the update_expiration function to make sure the tooltip is in sync with the expiration time
 --		however this might cause troubles again.
@@ -88,6 +89,7 @@ local function _inherit(object, class)
 	end
 end
 
+--only needed in _set_attribute(header, attribute)
 local pp_attributes = {"xOffset", "yOffset", "wrapXOffset", "wrapYOffset"}
 
 local function _set_attribute(header, attribute)
@@ -362,8 +364,10 @@ function button.new(self, header, child) --child given by iterating over childre
 	object.icon.texture:SetPoint("BOTTOMRIGHT", -i, i)
 	object.icon.texture:SetTexCoord(j, 1-j, j, 1-j)
 	
+	object.icon:Hide()
+	
 	--border
-	object.border:SetAllPoints(child)
+	object.border:SetAllPoints(child) --TODO that wont work for 48px texture
 	object.border:SetFrameLevel(2)
 
 	object.border.texture:SetAllPoints(child)
@@ -377,6 +381,7 @@ function button.new(self, header, child) --child given by iterating over childre
 	object.gloss.texture:SetAllPoints(child)
 	object.gloss.texture:SetTexture(header.config["gloss_texture"])
 	object.gloss.texture:SetVertexColor(unpack(header.config["gloss_color"]))
+
 	
 	--count text
 	object.count:SetTextColor(unpack(header.config["count_color"]))
@@ -588,7 +593,7 @@ function button.update_temp_enchant_expiration(self, elapsed)
 	print(self.update_frequency)
 
 	--update text
-	self.expiration:SetText(format_time(time_remaining))
+	self.expiration:SetText(format_time(time_remaining, unpack(self.header.config["update_format"])))
 	
 	--update tooltip (if the mouse over the frame)
 	if self.active_tooltip then

@@ -29,21 +29,25 @@ config["core"] = {
 	["font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 18, "OUTLINE"},
 }
 
+--Note: If you want to change the button size you need to do so in AuraButtonTemplate.xml (ONLY square buttons are supported!)
 config["default"] = {
 	["__index"] = config["core"],
-	["horizontal_spacing"] = 10,
-	["vertical_spacing"] = 28,
-	["width"] = 64, --this is needed and should always be the same as in the .xml file 
-	--TODO would be cooler if we can get this value from the xml file
-	["height"] = 64, --this is not really needed, cause we always asume that it's a square. TODO rename to size ?
+	--attribute part
+	["horizontal_spacing"] = 10 + 64, --it's the spacing + 
+	["vertical_spacing"] = 28 + 64,
 	["grow_direction"] = "LEFTDOWN",
-	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\BorderThin",
+	["unit"] = "player",
+	["wrapAfter"] = 12,
+	["sortMethod"] = "TIME",
+	["sortDir"] = "-",
+	--rest
+	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\Border",
 	["border_inset"] = 4, --depends on texture, it's 4 px for both included textures
-	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\GlossThin",
+	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\Gloss",
 	["gloss_color"] = {0.2, 0.2, 0.2, 1},
 	["count_font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 22, "OUTLINE"}, --config["core"]["font"], --if nil, use default font
 	["count_color"] = {1,1,1,1},
-	["expiration_font"] = config["core"]["font"], --if nil, use default font
+	["expiration_font"] = config["core"]["font"], --TODO if nil, use default font
 	["expiration_color"] = {1,1,1,1},
 	["count_x_offset"] = -6,
 	["count_y_offset"] = 8,
@@ -59,6 +63,7 @@ config["buff"] = {
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -15}, --{"CENTER", UIParent, "CENTER", 0, 0},
 	["border_color"] = {0.4, 0.4, 0.4, 1},
 	["update_frequency"] = {0.1,0.5,30,60,61} , -- every 0.1s if below 2s, every 0.5s if below 60s, every 30s if below 3600, every 60s if below 86400
+	["includeWeapons"] = 1, --only has effect for buff headers
 }
 
 config["debuff"] = {
@@ -69,9 +74,11 @@ config["debuff"] = {
 	["update_frequency"] = {0.1,0.5,30,60,61},
 }
 
+
+
 --32px buttons
 config["default_32"] = {
-	["__index"] = config["core"],
+	["__index"] = config["default"],
 }
 
 config["buff_32"] = {
@@ -80,6 +87,19 @@ config["buff_32"] = {
 
 config["debuff_32"] = {
 	["__index"] = config["default_32"],
+}
+
+--48px buttons
+config["default_48"] = {
+	["__index"] = config["default"],
+}
+
+config["buff_48"] = {
+	["__index"] = config["default_48"],
+}
+
+config["debuff_48"] = {
+	["__index"] = config["default_48"],
 }
 
 
@@ -94,58 +114,7 @@ end
 
 
 
----Attributes section (advanced)
---do NOT touch this if you're not certain what you're doing!
-local x, y = config["default"]["horizontal_spacing"] + config["default"]["width"], config["default"]["vertical_spacing"] + config["default"]["height"]
 
---xOffset, yOffset, wrapXOffset, wrapYOffset
-local directions = {	
-	["LEFTUP"]		= {-x, 0, 0, y},
-	["LEFTDOWN"]	= {-x, 0, 0, -y},
-	["RIGHTUP"]		= {x, 0, 0, y},
-	["RIGHTDOWN"]	= {x, 0, 0, -y},
-	["UPLEFT"]		= {0, y, -x, 0},
-	["UPRIGHT"]		= {0, y, x, 0},
-	["DOWNLEFT"]	= {0, -y, -x, 0},
-	["DOWNRIGHT"]	= {0, -y, x, 0},										
-} 
-
-local grow_direction = directions[config["default"]["grow_direction"]] -- or directions["LEFTDOWN"]
-
--- for further information on attributes check http://wowprogramming.com/utils/xmlbrowser/live/FrameXML/SecureGroupHeaders.lua
-attribute["default"] = {
-	["unit"] = "player",
-	["minWidth"] = 100,
-	["minHeight"] = 100,
-	["xOffset"] = grow_direction[1],
-	["yOffset"] = grow_direction[2],
-	["wrapAfter"] = 12,
-	["wrapXOffset"] =  grow_direction[3],
-	["wrapYOffset"] = grow_direction[4],
-	["sortMethod"] = "TIME",
-	["sortDir"] = "-",
-}
-
-attribute["buff"] = {
-	["__index"] = attribute["default"],
-	["filter"] = "HELPFUL",
-	["template"] = "ShaanaBuffButtonTemplate", --never name your template BuffButtonTemplate (Blizzard calls it that way)
-	["point"] = config["buff"]["anchor"][1], --really only the point
-	["maxWraps"] = 3,
-	["includeWeapons"] = 1,
-  	["weaponTemplate"] = "ShaanaTempEnchantButtonTemplate",
-}
-
-attribute["debuff"] = {
-	["__index"] = attribute["default"],
-	["filter"] = "HARMFUL",
-	["template"] = "ShaanaDebuffButtonTemplate",
-	["point"] = config["debuff"]["anchor"][1],
-	["maxWraps"] = 5,
-}
-
-
---Note:	inheritance for attribute is directly coded into set_attribute(frame, attribute)
 
 
 
