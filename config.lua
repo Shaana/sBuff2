@@ -50,6 +50,7 @@ config["default"] = {
 	["expiration_x_offset"] = 2,
 	["expiration_y_offset"] = 0,
 	["update_format"] = {4,180,3600,86400}, --{msec, sec, min, hour}, e.g time_remaning < sec --> show seconds
+	["display_vehicle_aura"] = false, --true/false display vehicle auras when in a vehicle instead of player aura
 }
 
 config["buff"] = {
@@ -65,7 +66,7 @@ config["debuff"] = {
 	["helpful"] = false, --simple true/false to check if it's a buff or debuff header
 	["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -266}, --{"CENTER", UIParent, "CENTER", 0, -200},
 	["border_color"] = {0.8, 0, 0, 1},
-	["update_frequency"] = {0.1,0.5,30,60,61}, 
+	["update_frequency"] = {0.1,0.5,30,60,61},
 }
 
 --32px buttons
