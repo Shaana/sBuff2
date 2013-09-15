@@ -1,0 +1,28 @@
+Just a little summary from the links listed below.
+
+>>Links<<
+---------
+http://forums.wowace.com/showthread.php?t=15439
+http://www.edowner.net/Texture-Tutorial/
+
+
+>>Working With TGA Files<<
+--------------------------
+TGA files are your basic RGB raster image. The advantage to the TGA format is the support of a fourth channel (the others being Red, Blue and Green), the "Alpha" channel.
+
+An alpha channel is a "channel" (like a layer) that uses various shades of gray to control the transparency of a given pixel. Pure white is 100% opaque and pure black is 100% transparent. The result is the ability to use partial, or "alpha" transparency in the image.
+
+-->Using GIMP makes it easy. You just draw with a transparent background, save as TGA, and the program automatically fixes the alpha channel and correct 32 bit mode. 
+
+>>TGA Limitations<<
+-------------------
+Before we move on to creating our image, we need to keep in mind that when it comes to TGA files, the WoW client has a few rules that must be followed in order for the image to be valid. Those rules are:
+
+- The height and width of the image must be a power of 2. (Ex: 16x16, 64x64, 128x256)
+- The height and width of the image can be no larger than 1024 pixels (Since patch 3.0)
+- The image itself can be RLE-compressed, 32-bit (24-bit+Alpha @ 72dpi) TGA file.
+
+-->ALWAYS restart the wow client after adding new textures!
+(If you just modifythe texture, but did not change the name/size it's enough to reload) 
+
+
