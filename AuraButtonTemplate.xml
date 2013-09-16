@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/
 ..\FrameXML\UI.xsd">
 	<Button name="ShaanaAuraButtonTemplate" inherits="SecureActionButtonTemplate" virtual="true">
+		--the real size is set in class.button.new()
 		<Size x="1" y="1"/>
 		<Scripts>
 			<OnLeave>
@@ -16,7 +17,8 @@
 		<Scripts>
 			<OnEnter>
 				self.active_tooltip = true
-				self:update_aura_tooltip()
+				--Note:	we update the whole button to ensure the tooltip and expiration time are synced
+				self:update_aura()
 			</OnEnter>
 			<OnLoad>
 				self:RegisterForClicks("RightButtonDown")
@@ -27,7 +29,7 @@
 		<Scripts>
 			<OnEnter>
 				self.active_tooltip = true
-				self:update_aura_tooltip()
+				self:update_aura()
 			</OnEnter>
 		</Scripts>
 	</Button>
@@ -38,10 +40,7 @@
 		<Scripts>
 			<OnEnter>
 				self.active_tooltip = true
-				--little workaround, because of slow TempEnchant update
-				if self.update_temp_enchant_tooltip then
-					self:update_temp_enchant_tooltip()
-				end
+				self:update_temp_enchant()
 			</OnEnter>
 			<OnLoad>
 				self:RegisterForClicks("RightButtonDown")
