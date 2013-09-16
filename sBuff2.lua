@@ -25,21 +25,13 @@ local config = namespace.config
 local attribute = namespace.attribute
 local class = namespace.class
 
---template = [STRING] -- the XML template to use for the unit buttons. If the created widgets should be something other than Buttons, append the Widget name after a comma.
---might be possible to make special sort order ?
-
 local function init()
-	--Debug functions, only uncomment them if you changed the config.lua
-	--and want to make sure it's working.
-	--core.check_config_integrity()
-	--core.check_attribute_integrity()
 
 	header_buff = class.header:new("sBuff_HeaderBuffs", config["buff"], attribute["buff"])
 	header_debuff = class.header:new("sBuff_HeaderDebuffs", config["debuff"], attribute["debuff"])
-
+	
+	--TODO add suppot for all units
 	--header_buff_taget = class.header:new("sBuff_HeaderBuffs", config["buff_target"], attribute["buff_target"])
-	--header_buff:SetScale(0.55)
-	--header_debuff:SetScale(0.55)
 	
 	--hide blizz frames
 	BuffFrame:UnregisterAllEvents()
@@ -47,18 +39,5 @@ local function init()
 	TemporaryEnchantFrame:Hide()
 	ConsolidatedBuffs:Hide()
 end
-
-
---local test_frame = CreateFrame("Frame", nil, UIParent)
---[[
-test_frame:RegisterEvent("UNIT_INVENTORY_CHANGED")
-test_frame:RegisterEvent("UPDATE_WEB_TICKET")
-test_frame:RegisterEvent("UPDATE_TICKET")
-test_frame:RegisterEvent("UNIT_AURA")
-test_frame:RegisterEvent("PLAYER_ENTERING_WORLD")
---]]
---test_frame:RegisterAllEvents()
-
---test_frame:SetScript("OnEvent", function(...) print(...) end)
 
 init()

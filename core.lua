@@ -40,6 +40,8 @@ class.button = button
 --TODO	make sure tooltips are in sync with time_remaining and whatever blizzard displays
 --		might wanna call the update_expiration function to make sure the tooltip is in sync with the expiration time
 --		however this might cause troubles again.
+--TODO	write config options for newbies, so they dont have to edit attributes ?
+--TODO	Test pixel perfection properly (fix if needed)
 
 --upvalue lua api
 local assert, error, type, select, pairs, ipairs, print, unpack = assert, error, type, select, pairs, ipairs, print, unpack
@@ -176,10 +178,7 @@ function header.new(self, name, config, attribute)
 
 	--Note: UNIT_AURA will be added by Blizzard's code
 	object:RegisterEvent("PLAYER_ENTERING_WORLD")
-	
-	--TODO do we need this or is UNIT_AURA getting called anyway?
-	--object:RegisterEvent("GROUP_ROSTER_UPDATE")
-	
+
 	--vehicle support
 	if object.config["display_vehicle_aura"] then
 		object:RegisterEvent("UNIT_ENTERED_VEHICLE")
@@ -193,7 +192,7 @@ function header.new(self, name, config, attribute)
 	--Note:	The UNIT_INVENTORY_CHANGED event is necessary for buff headers, because when a new TempEnchant is applied/weapon are being switched UNIT_AURA is fired and immediately afterwards UNIT_INVENTORY_CHANGED,
 	--		but only after UNIT_INVENTORY_CHANGED was fired the new icon returned by GetInventoryItemTexture() is available
 	--		For some reason button.update_temp_enchant(self) is only called once! (some smart blizzard code?)
-	if object.config["helpful"] then
+	if object.config["helpful"] and object:GetAttribute("includeWeapons") == 1 then
 		--TODO During the first login UNIT_INVENTORY_CHANGED is fired 30+ times (caching of inventory?) - might wanna do something about that
 		object:RegisterEvent("UNIT_INVENTORY_CHANGED")
 	end
@@ -205,10 +204,6 @@ end
 
 function header.update(self, event, unit)
 
-	--DEBUG
-	--TODO, remove
-	print(self, event, unit)
-	
 	--Note:	TempEnchant update is only necessary for buff headers, the check happens in header.update_temp_enchant(self)
 	if event == "PET_BATTLE_CLOSE" then
 		self:Show()
@@ -336,19 +331,19 @@ function button.new(self, header, child) --child given by iterating over childre
 		pp.add_all(object)
 		pp.add_all(object.icon)
 		pp.add_all(object.icon.texture)
-		--pp.add_all(object.border)
+		pp.add_all(object.border)
 		--pp.add_all(object.border.texture)
-		--pp.add_all(object.gloss)
+		pp.add_all(object.gloss)
 		--pp.add_all(object.gloss.texture)
 		pp.add_all(object.count) 
 		pp.add_all(object.expiration)
-		
-		--resize with pp.get_scale_factor()
-		object:SetSize(child:GetSize())
 	end
 	
+	--Note: If pp is turned on, SetSize will set the resized values
+	object:SetSize(unpack(header.config["size"]))
+	
 	--icon
-	object.icon:SetAllPoints(child) --TODO this won't work if we create a 48px border texture, cause we'll have to scale the icon to 48px and still have a 64px border texture with bigger border_inset
+	object.icon:SetAllPoints(child)
 	object.icon:SetFrameLevel(1)
 	
 	--TODO, something aint working here as intended ... (the scaling)
@@ -364,25 +359,24 @@ function button.new(self, header, child) --child given by iterating over childre
 	object.icon.texture:SetPoint("BOTTOMRIGHT", -i, i)
 	object.icon.texture:SetTexCoord(j, 1-j, j, 1-j)
 	
-	object.icon:Hide()
-	
 	--border
-	object.border:SetAllPoints(child) --TODO that wont work for 48px texture
+	object.border:SetPoint("CENTER", child, "CENTER")
+	object.border:SetSize(unpack(header.config["border_texture_size"]))
 	object.border:SetFrameLevel(2)
 
-	object.border.texture:SetAllPoints(child)
+	object.border.texture:SetAllPoints(object.border)
 	object.border.texture:SetTexture(header.config["border_texture"])
 	object.border.texture:SetVertexColor(unpack(header.config["border_color"]))
 
 	--gloss
-	object.gloss:SetAllPoints(child)
+	object.gloss:SetPoint("CENTER", child, "CENTER")
+	object.gloss:SetSize(unpack(header.config["gloss_texture_size"]))
 	object.gloss:SetFrameLevel(3)
 	
-	object.gloss.texture:SetAllPoints(child)
+	object.gloss.texture:SetAllPoints(object.gloss)
 	object.gloss.texture:SetTexture(header.config["gloss_texture"])
 	object.gloss.texture:SetVertexColor(unpack(header.config["gloss_color"]))
 
-	
 	--count text
 	object.count:SetTextColor(unpack(header.config["count_color"]))
 	object.count:SetFont(unpack(header.config["count_font"]))
@@ -471,10 +465,7 @@ function button.update_aura(self)
 		self.count:SetText(self.aura["count"])
 		
 	 --handle special spells 
-	elseif self.aura["spell_id"] == 73975 and self.aura["value_2"] then
-		--TODO test if it works with spell_id
-		--if self.aura["spell_id"] == 73975 and self.aura["value_1"] then
-		--if self.aura["name"] == "Necrotic Strike" and self.aura["value_1"] then
+	elseif self.aura["spell_id"] == 73975 and self.aura["value_2"] then --Necrotic Strike
 		--use the stack count to display the amount healing absorbed by Necrotic Strike
 		self.count:SetText(si_value(self.aura["value_2"]))
 	
@@ -568,7 +559,6 @@ function button.update_temp_enchant_expiration(self, elapsed)
 	
 	if not time_remaining then
 		--TODO is it even possible that we get no time_remaining ?
-		--DEBUG
 		print("error in update_temp_enchant_expiration, no time_remaining - please report this error", time_remaining)
 		return
 	end
@@ -587,10 +577,6 @@ function button.update_temp_enchant_expiration(self, elapsed)
 			break
 		end
 	end
-
-	--DEBUG
-	--TODO remove
-	print(self.update_frequency)
 
 	--update text
 	self.expiration:SetText(format_time(time_remaining, unpack(self.header.config["update_format"])))

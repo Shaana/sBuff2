@@ -24,6 +24,8 @@ namespace.config = config
 local attribute = {}
 namespace.attribute = attribute
 
+--Note:	only squre buttons are supported currently
+
 ---config section
 config["core"] = {
 	["font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 18, "OUTLINE"},
@@ -40,19 +42,28 @@ config["default"] = {
 	["wrapAfter"] = 12,
 	["sortMethod"] = "TIME",
 	["sortDir"] = "-",
+	
+	["size"] = {64, 64},
+	
 	--rest
 	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\Border64",
-	["border_inset"] = 4, --depends on texture, it's 4 px for both included textures
+	["border_texture_size"] = {64, 64},
+	["border_inset"] = 4, --depends on texture
+	
 	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\Gloss64",
+	["gloss_texture_size"] = {64, 64},
 	["gloss_color"] = {0.2, 0.2, 0.2, 1},
+	
 	["count_font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 22, "OUTLINE"}, --config["core"]["font"], --if nil, use default font
 	["count_color"] = {1,1,1,1},
-	["expiration_font"] = config["core"]["font"], --TODO if nil, use default font
-	["expiration_color"] = {1,1,1,1},
 	["count_x_offset"] = -6,
 	["count_y_offset"] = 8,
+	
+	["expiration_font"] = config["core"]["font"], --TODO if nil, use default font
+	["expiration_color"] = {1,1,1,1},
 	["expiration_x_offset"] = 2,
 	["expiration_y_offset"] = 0,
+	
 	["update_format"] = {4,180,3600,86400}, --{msec, sec, min, hour}, e.g time_remaning < sec --> show seconds
 	["display_vehicle_aura"] = false, --true/false display vehicle auras when in a vehicle instead of player aura
 }
@@ -75,7 +86,7 @@ config["debuff"] = {
 }
 
 
-
+--[[
 --32px buttons
 config["default_32"] = {
 	["__index"] = config["default"],
@@ -101,7 +112,7 @@ config["buff_48"] = {
 config["debuff_48"] = {
 	["__index"] = config["default_48"],
 }
-
+--]]
 
 
 --inheritance for the config
