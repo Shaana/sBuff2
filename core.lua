@@ -34,14 +34,16 @@ class.button = button
 --		while 'button_frame' is refering to object returned by header:GetAttributed("child"..i)
 
 
---TODO	maybe change everything, so it would allow headers for different units ?
+--TODO	add multi unit support (currently only player is supported)
 --TODO	add textures for 32px and 48px with predefined configs in config.lua (48px will be tricky)
 --		the texture needs to be 64px (power of 2), but the button needs to be 48 px (otherwise we have problems with canceling - might click on the wrong button)
---TODO	make sure tooltips are in sync with time_remaining and whatever blizzard displays
+--TODO	make sure tooltips are in sync with time_remaining and whatever blizzard displays (we floor in format_time(), blizzard ceils time_remaining) 
 --		might wanna call the update_expiration function to make sure the tooltip is in sync with the expiration time
 --		however this might cause troubles again.
 --TODO	write config options for newbies, so they dont have to edit attributes ?
 --TODO	Test pixel perfection properly (fix if needed)
+--		change pp to properly scale fonts
+--TODO	write proper github wiki (with nice pics)
 
 --upvalue lua api
 local assert, error, type, select, pairs, ipairs, print, unpack = assert, error, type, select, pairs, ipairs, print, unpack
@@ -185,7 +187,7 @@ function header.new(self, name, config, attribute)
 		object:RegisterEvent("UNIT_EXITED_VEHICLE")
 	end
 	
-	--pet battle support (hiding frames during a battle)
+	--pet battle support (hide frames during a battle)
 	object:RegisterEvent("PET_BATTLE_CLOSE")
 	object:RegisterEvent("PET_BATTLE_OPENING_START")
 
@@ -203,7 +205,6 @@ function header.new(self, name, config, attribute)
 end
 
 function header.update(self, event, unit)
-
 	--Note:	TempEnchant update is only necessary for buff headers, the check happens in header.update_temp_enchant(self)
 	if event == "PET_BATTLE_CLOSE" then
 		self:Show()
@@ -237,8 +238,7 @@ function header.update(self, event, unit)
 		end
 	else
 		print("Error, don't know what to do with this event: ", event)
-	end 
-	
+	end
 end
 
 function header.update_aura(self)
@@ -263,7 +263,7 @@ function header.update_aura(self)
 end
 
 function header.update_temp_enchant(self)
-	--only update if it's a buff header
+	--only update, if it's a buff header
 	if self.config["helpful"] then
 		for i=1, 2 do
 			local child = self:GetAttribute("tempEnchant"..i)
@@ -339,7 +339,9 @@ function button.new(self, header, child) --child given by iterating over childre
 		pp.add_all(object.expiration)
 	end
 	
-	--Note: If pp is turned on, SetSize will set the resized values
+	--TODO proper note
+	--Note: The size of icon and area for mouse over /right click remove
+	--		Furthermore if pp is turned on, SetSize will set the resized values
 	object:SetSize(unpack(header.config["size"]))
 	
 	--icon

@@ -26,22 +26,19 @@ namespace.attribute = attribute
 
 --Note:	only squre buttons are supported currently
 
----config section
-config["core"] = {
-	["font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 18, "OUTLINE"},
-}
+--TODO allow inheritance from multiple configs (that might quiet complicated)
 
---Note: If you want to change the button size you need to do so in AuraButtonTemplate.xml (ONLY square buttons are supported!)
+---config section
 config["default"] = {
-	["__index"] = config["core"],
+
 	--attribute part
 	["horizontal_spacing"] = 10 + 64, --it's the spacing + 
 	["vertical_spacing"] = 28 + 64,
 	["grow_direction"] = "LEFTDOWN",
-	["unit"] = "player",
-	["wrapAfter"] = 12,
-	["sortMethod"] = "TIME",
-	["sortDir"] = "-",
+	--["unit"] = "player",
+	--["wrapAfter"] = 12,
+	--["sortMethod"] = "TIME",
+	--["sortDir"] = "-",
 	
 	["size"] = {64, 64},
 	
@@ -49,6 +46,7 @@ config["default"] = {
 	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\Border64",
 	["border_texture_size"] = {64, 64},
 	["border_inset"] = 4, --depends on texture
+	--["border_color"] = {0.4, 0.4, 0.4, 1},
 	
 	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\Gloss64",
 	["gloss_texture_size"] = {64, 64},
@@ -59,13 +57,13 @@ config["default"] = {
 	["count_x_offset"] = -6,
 	["count_y_offset"] = 8,
 	
-	["expiration_font"] = config["core"]["font"], --TODO if nil, use default font
+	["expiration_font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 18, "OUTLINE"}, --TODO if nil, use default font
 	["expiration_color"] = {1,1,1,1},
 	["expiration_x_offset"] = 2,
 	["expiration_y_offset"] = 0,
 	
 	["update_format"] = {4,180,3600,86400}, --{msec, sec, min, hour}, e.g time_remaning < sec --> show seconds
-	["display_vehicle_aura"] = false, --true/false display vehicle auras when in a vehicle instead of player aura
+	["display_vehicle_aura"] = false, --true/false display vehicle auras when in a vehicle instead of unit aura
 }
 
 config["buff"] = {
@@ -86,10 +84,48 @@ config["debuff"] = {
 }
 
 
+--TODO make independent configs (dont inherit from default)
 --[[
+--48px buttons
+config["default_48"] = {
+	["__index"] = config["default"],
+	
+	["horizontal_spacing"] = 10 + 64,
+	["vertical_spacing"] = 28 + 64,
+	
+	["size"] = {48, 48},
+	
+	["border_texture"] = "Interface\\AddOns\\sBuff2\\media\\Border48",
+	["border_texture_size"] = {64, 64},
+	["border_inset"] = 3,
+	
+	["gloss_texture"] = "Interface\\AddOns\\sBuff2\\media\\Gloss48",
+	["gloss_texture_size"] = {64, 64},
+
+	["count_font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 16, "OUTLINE"},
+	["count_x_offset"] = -5,
+	["count_y_offset"] = 8,
+	
+	["expiration_font"] = {"Interface\\AddOns\\sBuff2\\media\\skurri.TTF", 14, "OUTLINE"},
+	["expiration_x_offset"] = 2,
+	["expiration_y_offset"] = 0,
+}
+
+config["buff_48"] = {
+	["__index"] = config["default_48"],
+	--["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -15}, --TODO
+}
+
+config["debuff_48"] = {
+	["__index"] = config["default_48"],
+	--["anchor"] = {"TOPRIGHT", UIParent, "TOPRIGHT", -250, -266}, --TODO
+}
+
+
 --32px buttons
 config["default_32"] = {
 	["__index"] = config["default"],
+	["size"] = {32, 32},
 }
 
 config["buff_32"] = {
@@ -100,18 +136,7 @@ config["debuff_32"] = {
 	["__index"] = config["default_32"],
 }
 
---48px buttons
-config["default_48"] = {
-	["__index"] = config["default"],
-}
 
-config["buff_48"] = {
-	["__index"] = config["default_48"],
-}
-
-config["debuff_48"] = {
-	["__index"] = config["default_48"],
-}
 --]]
 
 
