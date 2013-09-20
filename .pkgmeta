@@ -1,0 +1,6 @@
+package-as: sBuff2
+
+ignore:
+    - media\_BorderGloss32.xcf
+    - media\_BorderGloss48.xcf
+    - media\_BorderGloss64.xcf
