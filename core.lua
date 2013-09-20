@@ -1,19 +1,19 @@
 --[[
 Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
-This file is part of sBuff.
+This file is part of sBuff2.
 
-sBuff is free software: you can redistribute it and/or modify
+sBuff2 is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-sBuff is distributed in the hope that it will be useful,
+sBuff2 is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with sBuff.  If not, see <http://www.gnu.org/licenses/>.
+along with sBuff2.  If not, see <http://www.gnu.org/licenses/>.
 --]]
 
 local addon, namespace = ...
@@ -35,15 +35,24 @@ class.button = button
 
 
 --TODO	add multi unit support (currently only player is supported)
---TODO	add textures for 32px and 48px with predefined configs in config.lua (48px will be tricky)
---		the texture needs to be 64px (power of 2), but the button needs to be 48 px (otherwise we have problems with canceling - might click on the wrong button)
---TODO	make sure tooltips are in sync with time_remaining and whatever blizzard displays (we floor in format_time(), blizzard ceils time_remaining) 
---		might wanna call the update_expiration function to make sure the tooltip is in sync with the expiration time
---		however this might cause troubles again.
---TODO	write config options for newbies, so they dont have to edit attributes ?
+--TODO	add predefined configs in config.lua for 32px, 48px
+--TODO	make sure tooltips are in sync with time_remaining and whatever blizzard displays (we floor in format_time(), blizzard ceils time_remaining)
 --TODO	Test pixel perfection properly (fix if needed)
---		change pp to properly scale fonts
+--		change pp to properly scale fonts (--> don't use pp atm)
 --TODO	write proper github wiki (with nice pics)
+--TODO	checkout this option from the Template
+--		groupBy = [nil, auraFilter] -- if present, a series of comma-separated filters, appended to the base filter to separate auras into groups within a single stream
+--[[
+consolidateTo = [nil, NUMBER] -- The aura sub-stream before which to place a proxy for the consolidated header. If nil or 0, consolidation is ignored.
+consolidateDuration = [nil, NUMBER] -- the minimum total duration an aura should have to be considered for consolidation (Default: 30)
+consolidateThreshold = [nil, NUMBER] -- buffs with less remaining duration than this many seconds should not be consolidated (Default: 10)
+consolidateFraction = [nil, NUMBER] -- The fraction of remaining duration a buff should still have to be eligible for consolidation (Default: .10)
+
+consolidateProxy = [STRING|Frame] -- Either the button which represents consolidated buffs, or the name of the template used to construct one.
+consolidateHeader = [STRING|Frame] -- Either the aura header which contains consolidated buffs, or the name of the template used to construct one.
+-->for the proxy we just make a normal button that looks a bit fancy ?
+-->and for the header we can just use the same template as for buffs
+--]]
 
 --upvalue lua api
 local assert, error, type, select, pairs, ipairs, print, unpack = assert, error, type, select, pairs, ipairs, print, unpack
@@ -339,9 +348,8 @@ function button.new(self, header, child) --child given by iterating over childre
 		pp.add_all(object.expiration)
 	end
 	
-	--TODO proper note
-	--Note: The size of icon and area for mouse over /right click remove
-	--		Furthermore if pp is turned on, SetSize will set the resized values
+	--Note: This is the actual size. (area you can mouseover for the tooltip and right-click to cancel a buff)
+	--		Furthermore if pp is turned on, SetSize will set the resized values.
 	object:SetSize(unpack(header.config["size"]))
 	
 	--icon

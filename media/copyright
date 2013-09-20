@@ -1,4 +1,20 @@
 Copyright (c) 2008-2013 Shaana <shaana@student.ethz.ch>
+These files are part of sBuff2.
+
+_BorderGloss32.xcf
+_BorderGloss48.xcf
+_BorderGloss64.xcf
+Border32.tga
+Border48.tga
+Border64.tga
+BorderBold48.tga
+BorderBold64.tga
+Gloss32.tga
+Gloss48.tga
+Gloss64.tga
+GlossBold48.tga
+GlossBold64.tga
+sEdgeFile.tga
 
 sBuff2 is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -12,3 +28,6 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with sBuff2.  If not, see <http://www.gnu.org/licenses/>.
+
+
+

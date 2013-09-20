@@ -1,7 +1,7 @@
 ## Interface: 50400
 ## Title: sBuff2
 ## Author: Shaana
-## Version: 2.0 beta1
+## Version: 2.0.0
 ## Notes: Shaana's player aura frames
 ## OptionalDeps: sCore
 
